@@ -16,6 +16,6 @@ Describe your project here.
 3. pymongo
 
 # Run server
-move to src/server/api (where "main.py" is located)
-run command: uvicorn main:app --reload
+1. move to src/server/api (where "main.py" is located)
+2. run command: uvicorn main:app --reload
 
