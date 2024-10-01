@@ -2,8 +2,8 @@
 
 Describe your project here.
 
-## "capstone14 instead of hawk
-## need to create a new name for our client library
+# "capstone14 instead of hawk
+# need to create a new name for our client library
 
 
 ## "capstone14" server run for data_logging.py
