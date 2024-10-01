@@ -1,8 +1,6 @@
 # Enhanced-Transparent-Data-Preprocessing-for-Machine-Learning
 
-Describe your project here.
-
-# "capstone14 instead of hawk
+# capstone14
 ## need to create a new name for our client library
 
 
