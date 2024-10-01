@@ -1,0 +1,13 @@
+{{relationship("TreatmentTracking-id-idx","INIT","1000")}}
+['{{repeat(1000)}}',
+{"ID":{{index()}},
+"age":"{{error("MISSINGVALUE", 5, customDistributionInteger("equal", 18, 65))}}",
+"gender":"{{error("MISSINGVALUE", 7, gender())}}",
+"department":"{{put("department", random("HR","Technology","Sales","Marketing","Purchasing"))}}",
+"job_level":"{{integer(1,5)}}",
+"rating":"{{integer(1,10)}}",
+"awards":"{{error("INTERVALLVIOLATION", 10, 0, 20, customDistributionInteger("normal", 10.0, 5.0))}}",
+"salary":"{{error("MISSINGVALUE", 5, error("OUTLIER_INT", 10, 50000, 25000, "normal"))}}",
+"entry_date":"{{date("01-01-2004 00:00:00","01-01-2024 00:00:00","dd.MM.yyyy")}}",
+"satisfied":"{{bool()}}"
+}]

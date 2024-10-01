@@ -1,0 +1,39 @@
+{
+    "schema": {},
+    "columns": {
+        "ID": {},
+        "age": {
+            "mean": 0.04411249999999711,
+            "median": 0.24687500000000284,
+            "std": -0.20139026348642552,
+            "mad": -0.7531249999999972,
+            "skewness": -0.008634775973159939,
+            "kurtosis": 0.040803686447583365
+        },
+        "awards": {},
+        "department": {},
+        "entry_date": {},
+        "gender": {
+            "num_of_categories": -1
+        },
+        "job_level": {},
+        "rating": {},
+        "salary": {
+            "mean": -358.644029661009,
+            "median": -110.5,
+            "std": -414.4834457863799,
+            "mad": -462.5,
+            "skewness": 0.03618881255439424,
+            "kurtosis": 0.05681129015365771
+        },
+        "satisfied": {}
+    },
+    "correlations": [
+        {
+            "type": "CramersV",
+            "column_1": "entry_date",
+            "column_2": "gender",
+            "diff": -0.0024598136373633617
+        }
+    ]
+}
