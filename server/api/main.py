@@ -44,7 +44,7 @@ app.add_middleware(
     allow_headers=["*"]
 )
 db_client = MongoClient("localhost", 27017) # mongodb client
-db = db_client.get_database("hawk") # open database "hawk"
+db = db_client.get_database("capstone14") # open database "hawk"
 
 
 # return pipleline runs from DB
