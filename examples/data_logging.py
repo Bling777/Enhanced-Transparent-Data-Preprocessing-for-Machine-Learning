@@ -5,8 +5,11 @@ from pandas import DataFrame, read_csv
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import KNNImputer, SimpleImputer
 
-from capstone14 import (PipelineRun, log_data, save_pipeline_run_to_file,
-                  send_pipeline_run_to_server)
+# from capstone14 import (PipelineRun, log_data, save_pipeline_run_to_file,
+#                   send_pipeline_run_to_server)
+from capstone14.data_logging.pipeline_run import PipelineRun
+from capstone14.data_logging.functions import log_data, save_pipeline_run_to_file
+from capstone14.db.db_functions import create_run
 
 current_dir = dirname(abspath((__file__)))
 df = read_csv(join(current_dir, "datasets", "netflix.csv"))
@@ -48,6 +51,7 @@ if __name__ == '__main__':
       .pipe(impute_missing_values)
 
     if args.server:
-        send_pipeline_run_to_server(run, host="localhost", port=8000)
+        # send_pipeline_run_to_server(run, host="localhost", port=8000)
+        create_run(run)
     if args.save:
         save_pipeline_run_to_file(run, ".")

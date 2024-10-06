@@ -14,14 +14,6 @@ class ProcessingStep:
     input_datasets: list[str]
     output_datasets: list[str]
 
-    # def as_dict(self) -> dict:
-    #     return {
-    #         "id": self.id,
-    #         "description": self.description,
-    #         "input_datasets": self.input_datasets,
-    #         "output_datasets": self.output_datasets
-    #     }
-
 
 class PipelineRun:
     def __init__(self, input_data: pandas.DataFrame | None = None):

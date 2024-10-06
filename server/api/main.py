@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 from pydantic import BaseModel
 
+# ATLAS_URI = "mongodb+srv://Lee:capstone14@cluster0.tljn8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
 FEATURE_TYPES = ["CATEGORICAL", "NUMERIC"]
 EXCLUDED_STATS = ["histogram", "frequency_distribution"]
@@ -44,6 +45,7 @@ app.add_middleware(
     allow_headers=["*"]
 )
 db_client = MongoClient("localhost", 27017) # mongodb client
+# db_client = MongoClient(ATLAS_URI)
 db = db_client.get_database("capstone14") # open database "hawk"
 
 
