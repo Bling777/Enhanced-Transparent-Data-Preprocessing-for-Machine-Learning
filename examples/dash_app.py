@@ -1,6 +1,7 @@
 import dash
 from dash import dcc, html, Input, Output, State
-import dash_table
+#import dash_table
+from dash import dash_table
 import pandas as pd
 import json
 import base64
@@ -8,7 +9,8 @@ import io
 
 # Import the functions from the existing scripts
 from examples.data_logging import deduplicate, impute_missing_values, PipelineRun
-from examples.data_profile_generation import DataProfile
+#from examples.data_profile_generation import DataProfile
+from capstone14.data_profiling.data_profile import DataProfile
 from examples.data_diff_generation import impute_missing_values as diff_impute
 
 app = dash.Dash(__name__)

@@ -3,7 +3,8 @@ from os.path import abspath, dirname, join
 
 import pandas as pd
 
-from capstone14.data_profiling import DataProfile
+#from capstone14.data_profiling import DataProfile
+from capstone14.data_profiling.data_profile import DataProfile
 
 if __name__ == "__main__":
     current_dir = dirname(abspath((__file__)))
