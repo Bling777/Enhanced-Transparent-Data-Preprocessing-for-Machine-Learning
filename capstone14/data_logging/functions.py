@@ -1,76 +1,67 @@
-from collections.abc import Iterable
-from dataclasses import asdict
-import json
+import argparse
+import sys
 import os
-# import requests
+import openai
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from os.path import abspath, dirname, join
 
-import pandas
+from pandas import DataFrame, read_csv
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import KNNImputer, SimpleImputer
 
+# from capstone14 import (PipelineRun, log_data, save_pipeline_run_to_file,
+#                   send_pipeline_run_to_server)
 from capstone14.data_logging.pipeline_run import PipelineRun
+from capstone14.data_logging.functions import log_data, save_pipeline_run_to_file
+from capstone14.db.db_functions import create_run
 
-def log_data(run: PipelineRun, description: str):
-    def wrapper(func):
-        def with_data_logging(*args, **kwargs):
-            input_data = []
-            output_data = []
-            for arg in args:
-                if isinstance(arg, pandas.DataFrame):
-                    input_data.append(arg)
-            for key in kwargs:
-                if isinstance(kwargs[key], pandas.DataFrame):
-                    input_data.append(kwargs[key])
-            result = func(*args, **kwargs)
-            if isinstance(result, pandas.DataFrame):
-                output_data = [result]
-            if isinstance(result, Iterable):
-                for var in result:
-                    if isinstance(var, pandas.DataFrame):
-                        output_data.append(var)
-            run.add_processing_step(
-                description=description,
-                input_datasets=input_data,
-                output_datasets=output_data
-            )
-            return result
-        return with_data_logging
-    return wrapper
+# Set up OpenAI API credentials
+openai.api_key = os.getenv("OPENAI_API_KEY")
+if not openai.api_key:
+    raise ValueError("Please set the OPENAI_API_KEY environment variable")
+
+current_dir = dirname(abspath((__file__)))
+df = read_csv(join(current_dir, "datasets", "netflix.csv"))
+run = PipelineRun(df)
 
 
-# def send_pipeline_run_to_server(run: PipelineRun, host: str, port: int):
-#     body = {
-#         "run_id": run.run_id,
-#         "start_time": str(run.start_time),
-#         "dataset_ids": [dataset["id"] for dataset in run.datasets],
-#         "processing_steps": [asdict(step) for step in run.processing_steps]
-#     }
-#     response = requests.post(f"http://{host}:{port}/runs/", json=body)
-#     if response.status_code == 200:
-#         for dataset in run.datasets:
-#             data_profile = dataset.get("data_profile") # type: ignore
-#             body = {
-#                 "id": dataset["id"],
-#                 "data_profile": data_profile.as_dict() # type: ignore
-#             }
-#             requests.post(
-#                 f"http://localhost:8000/data-profile/{run.run_id}",
-#                 json=body
-#             ) 
+@log_data(run)
+def deduplicate(df: DataFrame) -> DataFrame:
+      return df.drop_duplicates()
 
 
-def save_pipeline_run_to_file(run: PipelineRun, path: str):
-    result = {
-        "run_id": run.run_id,
-        "start_time": run.start_time.strftime("%c"),
-        "dataset_ids": [dataset["id"] for dataset in run.datasets],
-        "processing_steps": [asdict(step) for step in run.processing_steps]
-    }
-    datasets = [
-        {
-            "dataset_id": dataset.get("id", -1),
-            "profile": dataset.get("data_profile", {}).as_dict()
-        } 
-        for dataset in run.datasets
-    ]
-    result["data_profiles"] = datasets
-    with open(os.path.join(path, f"capstone14_{run.run_id}.json"), "w") as outfile:
-        json.dump(result, outfile, indent=4)  # type: ignore 
+@log_data(run)
+def impute_missing_values(df: DataFrame) -> DataFrame:
+    knn_imputer = KNNImputer(n_neighbors=3, weights="uniform")
+    simple_imputer = SimpleImputer(missing_values="Not Given", strategy="most_frequent")
+    transformers = ColumnTransformer(
+        transformers=[
+            ("imputation_num_features", knn_imputer, ["release_year"]),
+            ("imputation_cat_features", simple_imputer, 
+             ["show_id", "type", "director", "country", "rating", "duration", "listed_in"])
+        ],
+        remainder="passthrough",
+        verbose_feature_names_out=False
+    ).set_output(transform="pandas")
+    return transformers.fit_transform(df)
+
+
+if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser(description="Test data logging")
+    arg_parser.add_argument(
+        "--server", 
+        action="store_true", 
+        help="Send collected data to server (it is assumed the API is running at localhost:8080)"
+    )
+    #print("in main")
+    arg_parser.add_argument("--save", action="store_true", help="Save collected data to JSON file")
+    args = arg_parser.parse_args()
+    
+    df.pipe(deduplicate) \
+      .pipe(impute_missing_values)
+
+    if args.server:
+        # send_pipeline_run_to_server(run, host="localhost", port=8000)
+        create_run(run)
+    if args.save:
+        save_pipeline_run_to_file(run, ".")

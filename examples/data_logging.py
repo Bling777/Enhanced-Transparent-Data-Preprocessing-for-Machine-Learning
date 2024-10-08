@@ -1,4 +1,8 @@
 import argparse
+import sys
+import os
+import openai
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from os.path import abspath, dirname, join
 
 from pandas import DataFrame, read_csv
@@ -11,17 +15,22 @@ from capstone14.data_logging.pipeline_run import PipelineRun
 from capstone14.data_logging.functions import log_data, save_pipeline_run_to_file
 from capstone14.db.db_functions import create_run
 
+# Set up OpenAI API credentials
+openai.api_key = os.getenv("OPENAI_API_KEY")
+if not openai.api_key:
+    raise ValueError("Please set the OPENAI_API_KEY environment variable")
+
 current_dir = dirname(abspath((__file__)))
 df = read_csv(join(current_dir, "datasets", "netflix.csv"))
-
 run = PipelineRun(df)
 
-@log_data(run, "deduplication")
+
+@log_data(run)
 def deduplicate(df: DataFrame) -> DataFrame:
-    return df.drop_duplicates()
+      return df.drop_duplicates()
 
 
-@log_data(run, "missing_value_imputation")
+@log_data(run)
 def impute_missing_values(df: DataFrame) -> DataFrame:
     knn_imputer = KNNImputer(n_neighbors=3, weights="uniform")
     simple_imputer = SimpleImputer(missing_values="Not Given", strategy="most_frequent")
@@ -44,6 +53,7 @@ if __name__ == '__main__':
         action="store_true", 
         help="Send collected data to server (it is assumed the API is running at localhost:8080)"
     )
+    #print("in main")
     arg_parser.add_argument("--save", action="store_true", help="Save collected data to JSON file")
     args = arg_parser.parse_args()
     

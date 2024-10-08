@@ -17,6 +17,8 @@
 3. requests
 4. fastapi
 5. pymongo
+6. openai
+7. dash
 
 ## Run server
 1. move to src/server/api (where "main.py" is located)
