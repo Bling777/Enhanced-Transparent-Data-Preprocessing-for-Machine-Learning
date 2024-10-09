@@ -95,7 +95,7 @@ class PipelineRun:
         self._update_analysis_context(processing_step)
         
         self.processing_steps.append(processing_step)
-        print(processing_step)
+        #print(processing_step)
         return processing_step
 
     def _update_analysis_context(self, step: ProcessingStep):
