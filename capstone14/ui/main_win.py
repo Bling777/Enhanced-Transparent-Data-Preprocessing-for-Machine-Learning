@@ -90,27 +90,7 @@ class MainUIWindow(QWidget):
 
         self.horizontalGroupBox.setLayout(layout)
 
-    # add raw datafile to the preprocessing
-    def add_raw_data(self):
-        # add a raw datafile into raw_data
-        fname = QFileDialog.getOpenFileName(self, 'Open Raw File', '', 'csv File(*.csv)')
-        self.show_profile()
-        pass
-
-    # add a preprocessing step into preprocessing_step
-    def add_pstep(self):
-        self.add_pstep.raw_data = raw_data
-        self.add_pstep.processing_steps = processing_steps
-        self.add_pstep.show()
-        self.show_profile()
-        pass
-
-    # create run object from raw_data and preprocessing_step
-    def run_pipeline(self):
-        pass
-
-    # draw the DAG on the main window from raw_data and processing_step
-    def show_profile(self):
+    def draw_DAG(self):
         G = nx.DiGraph(
             [
                 ("f", "a"),
@@ -138,6 +118,28 @@ class MainUIWindow(QWidget):
         self.canvas.draw_idle()
 
         self.show()
+
+    # add raw datafile to the preprocessing
+    def add_raw_data(self):
+        # add a raw datafile into raw_data
+        fname = QFileDialog.getOpenFileName(self, 'Open Raw File', '', 'csv File(*.csv)')
+        self.draw_DAG()
+        pass
+
+    # add a preprocessing step into preprocessing_step
+    def add_pstep(self):
+        self.add_pstep.raw_data = raw_data
+        self.add_pstep.processing_steps = processing_steps
+        self.add_pstep.show()
+        self.draw_DAG()
+        pass
+
+    # create run object from raw_data and preprocessing_step
+    def run_pipeline(self):
+        pass
+
+    # draw the DAG on the main window from raw_data and processing_step
+    def show_profile(self):
         pass
 
     # calculate difference between input and output columns
@@ -152,7 +154,7 @@ class MainUIWindow(QWidget):
     def load_profile(self):
         # load PipelineRun object, run form database
         # create raw_data processing_steps from run object
-        self.show_profile()
+        self.draw_DAG()
         pass
 
 
