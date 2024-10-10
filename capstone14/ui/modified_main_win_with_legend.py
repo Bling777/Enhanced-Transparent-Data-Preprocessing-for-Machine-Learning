@@ -136,7 +136,9 @@ class MainUIWindow(QWidget):
                           for key, value in nodes.items()]
         
         # Place legend in the lower right corner
-        ax.legend(handles=legend_elements, loc='lower right', title="Node Meanings", bbox_to_anchor=(1, 0), fontsize='small')
+        #ax.legend(handles=legend_elements, loc='lower right', title="Node Meanings", bbox_to_anchor=(1, 0), fontsize='small')
+        ax.legend(handles=legend_elements, loc='lower right', bbox_to_anchor=(1.2, -0.05), title="Node Meanings", fontsize='small')
+
         
         plt.tight_layout()  # Adjust the layout
         self.canvas.draw_idle()
