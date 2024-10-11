@@ -149,6 +149,23 @@ class MainUIWindow(QWidget):
         run.execute()  # Execute the pipeline
         QMessageBox.information(self, "Info", "Pipeline executed successfully!")
 
+    #'run pipeline' UI implementation-Ringo
+    # def run_pipeline(self):
+    #     if not self.raw_data_path:
+    #         QMessageBox.warning(self, "Error", "Please add raw data first.")
+    #         return
+
+    #     try:
+    #         raw_data = pd.read_csv(self.raw_data_path)
+    #         self.pipeline_run = PipelineRun(raw_data)
+
+    #         # Here to can add preprocessing steps
+
+    #         QMessageBox.information(self, "Pipeline Run", f"Pipeline run completed. Run ID: {self.pipeline_run.run_id}")
+
+    #     except Exception as e:
+    #         QMessageBox.critical(self, "Error", f"An error occurred while running 
+
     def show_profile(self):
         pass
 
