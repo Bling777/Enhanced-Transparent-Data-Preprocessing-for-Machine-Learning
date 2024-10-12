@@ -123,12 +123,12 @@ class MainUIWindow(QWidget):
         nodes = {
             "a": "Merge Data", 
             "b": "Deduplicate", 
-            "c": "Impute Missing Values", 
-            "d": "Normalization", 
-            "e": "Feature Extraction", 
-            "f": "Split Dataset", 
-            "g": "Train Model", 
-            "h": "Evaluate Model"
+            "c": "Impute Missing Values"
+            # "d": "Normalization", 
+            # "e": "Feature Extraction", 
+            # "f": "Split Dataset", 
+            # "g": "Train Model", 
+            # "h": "Evaluate Model"
         }
         
         legend_elements = [plt.Line2D([0], [0], marker='o', color='w', label=f'{key}: {value}',

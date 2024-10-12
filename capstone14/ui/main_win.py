@@ -1,4 +1,6 @@
 
+import sys  
+import os
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QFont
@@ -21,6 +23,9 @@ class MainUIWindow(QWidget):
         font = QFont()
         font.setPointSize(16)
         self.initUI()
+
+        self.dag = nx.DiGraph()
+
 
     def initUI(self):
         self.setGeometry(100, 100, 800, 600)
@@ -89,40 +94,43 @@ class MainUIWindow(QWidget):
         self.horizontalGroupBox.setLayout(layout)
 
     def draw_DAG(self):
-        G = nx.DiGraph(
-            [
-                ("f", "a"),
-                ("a", "b"),
-                ("a", "e"),
-                ("b", "c"),
-                ("b", "d"),
-                ("d", "e"),
-                ("f", "c"),
-                ("f", "g"),
-                ("h", "f"),
-            ]
-        )
+        print(self.dag.nodes.data())
 
-        for layer, nodes in enumerate(nx.topological_generations(G)):
-            for node in nodes:
-                G.nodes[node]["layer"] = layer
+        pos = {}
+        if (len(self.dag.edges)):
+            for layer, nodes in enumerate(nx.topological_generations(self.dag)):
+                for node in nodes:
+                    self.dag.nodes[node]["layer"] = layer
 
-        pos = nx.multipartite_layout(G, subset_key="layer")
-        nx.draw(G, pos=pos, with_labels=True)
+            pos = nx.multipartite_layout(self.dag, subset_key="layer")
+        else:
+            for i, nd in enumerate(self.dag.nodes):
+                pos[nd] = [0,i]
+            print(pos)
+
+        nx.draw(self.dag, pos=pos, with_labels=True, node_shape='s')
         self.canvas.draw_idle()
-        self.show()
+
+        # else:
+        #     nx.draw_networkx_nodes(self.dag, pos=nx.spring_layout(self.dag), with_labels=True)
+        #     self.canvas.draw_idle()
+        # self.show()
 
     def add_raw_data(self):
         # Add raw data file into raw_data list
         fname, _ = QFileDialog.getOpenFileName(self, 'Open Raw File', '', 'CSV Files (*.csv)')
         
         if fname:  # If a file is selected
-            raw_data_entry = {
-                'id': len(self.raw_data),  # Assign a unique ID
-                'description': f'Raw data file {len(self.raw_data) + 1}',  # Simple description
-                'filepath': fname  # File path
-            }
-            self.raw_data.append(raw_data_entry)  # Store in global variable
+            # raw_data_entry = {
+            #     'id': len(self.raw_data),  # Assign a unique ID
+            #     'description': f'Raw data file {len(self.raw_data) + 1}',  # Simple description
+            #     'filepath': fname  # File path
+            # }
+            # self.raw_data.append(raw_data_entry)  # Store in global variable
+
+            file_desc = f'Raw data file {len(self.raw_data) + 1}',  # Simple description
+            file_path = fname  # File path
+            self.dag.add_node(os.path.basename(file_path)) #, type='raw', description=file_desc, path=file_path, color='bule')
 
             self.draw_DAG()  # Update DAG display
         pass
@@ -130,11 +138,12 @@ class MainUIWindow(QWidget):
     def add_pstep(self):
         self.add_pstep.raw_data = self.raw_data
         self.add_pstep.processing_steps = self.processing_steps
+        self.add_pstep.show()
 
         # Add processing step
-        step = self.add_pstep.get_step()  # Assuming get_step method gets a processing step
-        if step:
-            self.processing_steps.append(step)  # Add step to the list of processing steps
+        # step = self.add_pstep.get_step()  # Assuming get_step method gets a processing step
+        # if step:
+        #     self.processing_steps.append(step)  # Add step to the list of processing steps
 
         self.draw_DAG()  # Update DAG display
         pass
@@ -183,7 +192,6 @@ class MainUIWindow(QWidget):
 
 
 if __name__ == '__main__':
-    import sys  
     app = QApplication(sys.argv)
     app.aboutToQuit.connect(app.deleteLater)
     app.setStyle(QStyleFactory.create("gtk"))
