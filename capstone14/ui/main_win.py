@@ -18,13 +18,14 @@ class MainUIWindow(QWidget):
     def __init__(self):
         super(MainUIWindow, self).__init__()        
         # Initialize raw_data and processing_steps
-        self.raw_data = []  # Used to store added raw data files
-        self.processing_steps = []  # Used to store processing steps
+        # self.raw_data = []  # Used to store added raw data files
+        # self.processing_steps = []  # Used to store processing steps
         font = QFont()
         font.setPointSize(16)
         self.initUI()
 
         self.dag = nx.DiGraph()
+        self.add_pstep = AddProcessStepWin()
 
 
     def initUI(self):
@@ -35,16 +36,15 @@ class MainUIWindow(QWidget):
         grid = QGridLayout()
         self.setLayout(grid)
         self.createHGroupBox() 
+        grid.addWidget(self.horizontalGroupBox, 0, 0)
 
-        buttonLayout = QHBoxLayout()
-        buttonLayout.addWidget(self.horizontalGroupBox)
-        grid.addLayout(buttonLayout, 0, 0)
+        # buttonLayout = QHBoxLayout()
+        # buttonLayout.addWidget(self.horizontalGroupBox)
+        # grid.addLayout(buttonLayout, 0, 0)
 
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)        
         grid.addWidget(self.canvas, 1, 0, 9, 9)          
-
-        self.add_pstep = AddProcessStepWin()
 
     def center(self):
         qr = self.frameGeometry()
@@ -95,6 +95,7 @@ class MainUIWindow(QWidget):
 
     def draw_DAG(self):
         print(self.dag.nodes.data())
+        print(self.dag.edges.data())
 
         pos = {}
         if (len(self.dag.edges)):
@@ -106,9 +107,11 @@ class MainUIWindow(QWidget):
         else:
             for i, nd in enumerate(self.dag.nodes):
                 pos[nd] = [0,i]
-            print(pos)
+            # print(pos)
 
-        nx.draw(self.dag, pos=pos, with_labels=True, node_shape='s')
+        plt.clf()
+        nx.draw(self.dag, pos=pos, with_labels=True, node_shape='s',
+                node_color='lightblue', node_size=1000, font_size=10, font_weight='bold')
         self.canvas.draw_idle()
 
         # else:
@@ -128,17 +131,29 @@ class MainUIWindow(QWidget):
             # }
             # self.raw_data.append(raw_data_entry)  # Store in global variable
 
-            file_desc = f'Raw data file {len(self.raw_data) + 1}',  # Simple description
+            id = len(self.dag.nodes)  # Assign a unique ID
+            file_desc = f'Raw data file {len(self.dag.nodes) + 1}',  # Simple description
             file_path = fname  # File path
-            self.dag.add_node(os.path.basename(file_path)) #, type='raw', description=file_desc, path=file_path, color='bule')
+            self.dag.add_node(f'R{id}. {os.path.basename(file_path)}', 
+                              type='raw', description=file_desc, path=file_path)
 
             self.draw_DAG()  # Update DAG display
         pass
 
     def add_pstep(self):
-        self.add_pstep.raw_data = self.raw_data
-        self.add_pstep.processing_steps = self.processing_steps
-        self.add_pstep.show()
+        AddProcessStepWin.add_process_step(list(self.dag.nodes))
+
+        if AddProcessStepWin.selected_pstep != '':
+            id = len(self.dag.nodes)  # Assign a unique ID
+            step_name = f'S{id}. {AddProcessStepWin.selected_pstep}'
+            self.dag.add_node(step_name, type='step', description=AddProcessStepWin.selected_pstep)
+
+            for input_nd in AddProcessStepWin.selected_input_nodes:
+                self.dag.add_edge(input_nd, step_name)
+
+        # self.add_pstep.set_input_items(list(self.dag.nodes))
+        # self.add_pstep.processing_steps = self.processing_steps
+        # self.add_pstep.show()
 
         # Add processing step
         # step = self.add_pstep.get_step()  # Assuming get_step method gets a processing step
@@ -146,7 +161,6 @@ class MainUIWindow(QWidget):
         #     self.processing_steps.append(step)  # Add step to the list of processing steps
 
         self.draw_DAG()  # Update DAG display
-        pass
 
     def run_pipeline(self):
         if not self.raw_data:
@@ -194,7 +208,7 @@ class MainUIWindow(QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.aboutToQuit.connect(app.deleteLater)
-    app.setStyle(QStyleFactory.create("gtk"))
+    # app.setStyle(QStyleFactory.create("gtk"))
     screen = MainUIWindow() 
     screen.show()   
     sys.exit(app.exec_())

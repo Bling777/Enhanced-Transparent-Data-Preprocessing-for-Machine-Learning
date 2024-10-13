@@ -1,32 +1,64 @@
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QCoreApplication
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QFont
 
 
-class AddProcessStepWin(QWidget):
+class AddProcessStepWin(QDialog):
+    selected_input_nodes = []
+    selected_pstep = ''
+
+    @staticmethod
+    def add_process_step(input_items):
+        win = AddProcessStepWin()
+        for rd in input_items:
+            QListWidgetItem(rd, win.inputDataList)
+        win.exec_()
 
     def __init__(self):
         super(AddProcessStepWin, self).__init__()        
+
+        self.raw_data = [] # list of name of raw data
+        self.processing_steps = [] # list of name of existing steps
+
         font = QFont()
         font.setPointSize(16)
         self.initUI()
 
-        self.raw_data = [] # list of {id, description, filepath}
-        self.processing_steps = [] # list of dict {id, name, [input_step_ids]} (first steps have raw_data ids as input_step_ids)
-
     def initUI(self):
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 600, 300)
         self.center()
         self.setWindowTitle('Add a Preprocessing Step')
 
+        # raw data and existing steps <- assigned by main_win.py
+        self.inputDataList = QListWidget(self) 
+        self.inputDataList.setSelectionMode(QAbstractItemView.MultiSelection)
+        self.inputDataList.setSortingEnabled(True)
+
+        # possible processing step
+        self.pstepList = QListWidget(self)   
+        QListWidgetItem("Merge", self.pstepList)
+        QListWidgetItem("Deduplicate", self.pstepList)
+        QListWidgetItem("Iimpute Missing Values", self.pstepList)
+
+        btnGroupBox = QGroupBox()
+        btnLayout = QVBoxLayout()
+        btnAdd = QPushButton('Add Processing Step', self)
+        btnAdd.clicked.connect(self.add_raw_data)
+        btnCancel = QPushButton('Cancel', self)
+        btnCancel.clicked.connect(self.sel_cancel)
+        btnLayout.addWidget(btnAdd)
+        btnLayout.setSpacing(5)
+        btnLayout.addWidget(btnCancel)
+        btnGroupBox.setLayout(btnLayout)
+
         grid = QGridLayout()
+        grid.addWidget(QLabel("Input Data", self), 0, 0)
+        grid.addWidget(self.inputDataList, 1, 0)
+        grid.addWidget(QLabel("Processing Task", self), 0, 1)
+        grid.addWidget(self.pstepList, 1, 1)
+        grid.addWidget(btnGroupBox, 2, 1)
+
         self.setLayout(grid)
-        self.createVGroupBox() 
-
-        listLayout = QVBoxLayout()
-        listLayout.addWidget(self.verticalGroupBox)
-
-        grid.addLayout(listLayout, 0, 0)
 
     def center(self):
         qr = self.frameGeometry()
@@ -34,36 +66,28 @@ class AddProcessStepWin(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
         
-    def createVGroupBox(self):
-        self.verticalGroupBox = QGroupBox()
+    def add_raw_data(self):
+        if len(self.inputDataList.selectedItems()) and len(self.pstepList.selectedItems()):
+            AddProcessStepWin.selected_input_nodes = [item.text() for item in self.inputDataList.selectedItems()]
+            AddProcessStepWin.selected_pstep = self.pstepList.selectedItems()[0].text()
+            self.close()
+        else:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Please select input data and processing task")
+            msg.exec_()
 
-        layout = QVBoxLayout()
+    def sel_cancel(self):
+        AddProcessStepWin.selected_input_nodes = []
+        AddProcessStepWin.selected_pstep = ''
+        self.close()
 
-        lblProcess = QLabel("Preprocessing Task", self)
-        layout.addWidget(lblProcess)
-        layout.setSpacing(10)
 
-        listProcess = QListWidget(self)
-        layout.addWidget(listProcess)
-        layout.setSpacing(10)
-
-        lblProcess = QLabel("Input Data", self)
-        layout.addWidget(lblProcess)
-        layout.setSpacing(10)
-
-        listInputData = QListWidget(self)
-        listInputData.setSelectionMode(QAbstractItemView.MultiSelection)
-        layout.addWidget(listInputData)
-
-        QListWidgetItem("Merge", listProcess)
-        QListWidgetItem("Deduplicate", listProcess)
-        QListWidgetItem("Iimpute Missing Values", listProcess)
-
-        # insert list itmes from raw_data and processing_steps
-        QListWidgetItem("RawData1", listInputData)
-        QListWidgetItem("RawData2", listInputData)
-        QListWidgetItem("Step1", listInputData)
-        QListWidgetItem("Step2", listInputData)
-
-        self.verticalGroupBox.setLayout(layout)
-
+if __name__ == '__main__':
+    import sys
+    app = QApplication(sys.argv)
+    app.aboutToQuit.connect(app.deleteLater)
+    # app.setStyle(QStyleFactory.create("gtk"))
+    screen = AddProcessStepWin() 
+    screen.show()   
+    sys.exit(app.exec_())
