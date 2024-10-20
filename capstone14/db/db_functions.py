@@ -14,6 +14,7 @@ db = db_client.get_database("capstone14") # open database "capstone14"
 # save the pipleline run
 # @app.post("/runs/")
 def create_run(run: PipelineRun):
+    print(f"save {run.run_id}")
     run_collection = db.get_collection("pipeline_run")
     run_collection.insert_one({
         "run_id": run.run_id,

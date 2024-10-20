@@ -3,191 +3,139 @@ import sys
 import os
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QFont
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import networkx as nx
+
+from pandas import DataFrame, read_csv
 
 from capstone14.data_logging.pipeline_run import PipelineRun
 from capstone14.ui.add_process_step import AddProcessStepWin
+from capstone14.ui.data_trans_type import DataTransType, run_data_transformation
+from capstone14.db.db_functions import create_run
 
 
 class MainUIWindow(QWidget):
-
     def __init__(self):
         super(MainUIWindow, self).__init__()        
-        # Initialize raw_data and processing_steps
-        # self.raw_data = []  # Used to store added raw data files
-        # self.processing_steps = []  # Used to store processing steps
-        font = QFont()
-        font.setPointSize(16)
         self.initUI()
 
+        self.run = None
         self.dag = nx.DiGraph()
         self.add_pstep = AddProcessStepWin()
 
-
     def initUI(self):
-        self.setGeometry(100, 100, 800, 600)
-        self.center()
         self.setWindowTitle('Transparent Data Preprocessing System')
+        buttons = (('Add Raw Data', self.add_raw_data),
+                   ('Add Step', self.add_pstep), 
+                   ('Run Pipeline', self.run_pipeline), 
+                   ('Show Profile', self.show_profile), 
+                   ('Compare Profiles', self.compare_profile), 
+                   ('Save Pipeline', self.save_profile), 
+                   ('Load Pipeline', self.load_profile))
 
         grid = QGridLayout()
         self.setLayout(grid)
-        self.createHGroupBox() 
-        grid.addWidget(self.horizontalGroupBox, 0, 0)
 
-        # buttonLayout = QHBoxLayout()
-        # buttonLayout.addWidget(self.horizontalGroupBox)
-        # grid.addLayout(buttonLayout, 0, 0)
+        # buttons for main functions
+        layout = QHBoxLayout()
+        for btn in buttons:
+            button = QPushButton(btn[0], self)
+            button.clicked.connect(btn[1])
+            layout.addWidget(button)
+            layout.setSpacing(10)
+        hGroupBox = QGroupBox()
+        hGroupBox.setLayout(layout)
+        grid.addWidget(hGroupBox, 0, 0)
 
-        self.figure = plt.figure()
-        self.canvas = FigureCanvas(self.figure)        
+        # Directed Acyclic Graph
+        figure = plt.figure()
+        self.canvas = FigureCanvas(figure)        
         grid.addWidget(self.canvas, 1, 0, 9, 9)          
 
-    def center(self):
+        # set windows size and position (center)
+        self.setGeometry(100, 100, 800, 600)
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
-        
-    def createHGroupBox(self):
-        self.horizontalGroupBox = QGroupBox()
-
-        layout = QHBoxLayout()
-
-        button = QPushButton('Add Raw Data', self)
-        button.clicked.connect(self.add_raw_data)
-        layout.addWidget(button)
-        layout.setSpacing(10)
-
-        button = QPushButton('Add Step', self)
-        button.clicked.connect(self.add_pstep)
-        layout.addWidget(button)
-        layout.setSpacing(10)
-
-        button = QPushButton('Run Pipeline', self)
-        button.clicked.connect(self.run_pipeline)
-        layout.addWidget(button)
-        layout.setSpacing(10)
-
-        button = QPushButton('Show Profile', self)
-        button.clicked.connect(self.show_profile)
-        layout.addWidget(button)
-        layout.setSpacing(10)
-
-        button = QPushButton('Compare Profiles', self)
-        button.clicked.connect(self.compare_profile)
-        layout.addWidget(button)
-        layout.setSpacing(10)
-
-        button = QPushButton('Save Pipeline', self)
-        button.clicked.connect(self.save_profile)
-        layout.addWidget(button)
-        layout.setSpacing(10)
-
-        button = QPushButton('Load Pipeline', self)
-        button.clicked.connect(self.load_profile)
-        layout.addWidget(button)
-
-        self.horizontalGroupBox.setLayout(layout)
 
     def draw_DAG(self):
-        print(self.dag.nodes.data())
-        print(self.dag.edges.data())
+        # print(self.dag.nodes.data())
+        # print(self.dag.edges.data())
 
-        pos = {}
-        if (len(self.dag.edges)):
-            for layer, nodes in enumerate(nx.topological_generations(self.dag)):
-                for node in nodes:
-                    self.dag.nodes[node]["layer"] = layer
-
-            pos = nx.multipartite_layout(self.dag, subset_key="layer")
-        else:
-            for i, nd in enumerate(self.dag.nodes):
-                pos[nd] = [0,i]
-            # print(pos)
+        # set each position of nodes
+        for layer, nodes in enumerate(nx.topological_generations(self.dag)):
+            for node in nodes:
+                self.dag.nodes[node]["layer"] = layer
+        pos = nx.multipartite_layout(self.dag, subset_key="layer")
 
         plt.clf()
         nx.draw(self.dag, pos=pos, with_labels=True, node_shape='s',
                 node_color='lightblue', node_size=1000, font_size=10, font_weight='bold')
         self.canvas.draw_idle()
 
-        # else:
-        #     nx.draw_networkx_nodes(self.dag, pos=nx.spring_layout(self.dag), with_labels=True)
-        #     self.canvas.draw_idle()
-        # self.show()
-
     def add_raw_data(self):
         # Add raw data file into raw_data list
-        fname, _ = QFileDialog.getOpenFileName(self, 'Open Raw File', '', 'CSV Files (*.csv)')
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Open Raw File', '', 'CSV Files (*.csv)')
         
-        if fname:  # If a file is selected
-            # raw_data_entry = {
-            #     'id': len(self.raw_data),  # Assign a unique ID
-            #     'description': f'Raw data file {len(self.raw_data) + 1}',  # Simple description
-            #     'filepath': fname  # File path
-            # }
-            # self.raw_data.append(raw_data_entry)  # Store in global variable
+        if file_path:  # If a file is selected
+            # check if the file is already included
+            if len([x for x,y in self.dag.nodes(data=True) if y['type']=='raw' and y['path']==file_path]) > 0:
+                QMessageBox.warning(self, 'Warning', 'The file is already included')
+                return
+            else:
+                id = len(self.dag.nodes)  # Assign a unique ID
+                name = f'R{id}. {os.path.basename(file_path)}'
+                file_desc = f'Raw data file {len(self.dag.nodes) + 1}'  # Simple description
 
-            id = len(self.dag.nodes)  # Assign a unique ID
-            file_desc = f'Raw data file {len(self.dag.nodes) + 1}',  # Simple description
-            file_path = fname  # File path
-            self.dag.add_node(f'R{id}. {os.path.basename(file_path)}', 
-                              type='raw', description=file_desc, path=file_path)
-
-            self.draw_DAG()  # Update DAG display
-        pass
-
+                self.dag.add_node(name, id=id, type='raw', path=file_path, description=file_desc)
+                self.draw_DAG()  # Update DAG display
+    
     def add_pstep(self):
-        AddProcessStepWin.add_process_step(list(self.dag.nodes))
+        AddProcessStepWin.list_input_nodes(list(self.dag.nodes))
 
-        if AddProcessStepWin.selected_pstep != '':
+        if AddProcessStepWin.selected_pstep != None:
             id = len(self.dag.nodes)  # Assign a unique ID
-            step_name = f'S{id}. {AddProcessStepWin.selected_pstep}'
-            self.dag.add_node(step_name, type='step', description=AddProcessStepWin.selected_pstep)
+            step_name = f'S{id}. {AddProcessStepWin.selected_pstep.value}'
+            self.dag.add_node(step_name, id=id, type='step', trans_type=AddProcessStepWin.selected_pstep)
 
             for input_nd in AddProcessStepWin.selected_input_nodes:
                 self.dag.add_edge(input_nd, step_name)
 
-        # self.add_pstep.set_input_items(list(self.dag.nodes))
-        # self.add_pstep.processing_steps = self.processing_steps
-        # self.add_pstep.show()
-
-        # Add processing step
-        # step = self.add_pstep.get_step()  # Assuming get_step method gets a processing step
-        # if step:
-        #     self.processing_steps.append(step)  # Add step to the list of processing steps
-
-        self.draw_DAG()  # Update DAG display
+            self.draw_DAG()  # Update DAG display
 
     def run_pipeline(self):
-        if not self.raw_data:
-            QMessageBox.warning(self, "Warning", "No raw data added!")
+        if self.dag.number_of_nodes() == 0:
+            QMessageBox.warning(self, "Warning", "No data or steps in the preprocessing")
             return
 
-        # Assuming PipelineRun handles data processing
-        run = PipelineRun(self.raw_data, self.processing_steps)  # Pass raw_data and processing steps
-        run.execute()  # Execute the pipeline
-        QMessageBox.information(self, "Info", "Pipeline executed successfully!")
+        print("##### Start: run_pipeline #####")
 
-    #'run pipeline' UI implementation-Ringo
-    # def run_pipeline(self):
-    #     if not self.raw_data_path:
-    #         QMessageBox.warning(self, "Error", "Please add raw data first.")
-    #         return
+        self.run = None
+        self.run = PipelineRun()
 
-    #     try:
-    #         raw_data = pd.read_csv(self.raw_data_path)
-    #         self.pipeline_run = PipelineRun(raw_data)
+        # iterate according the postion of nodes
+        for node_generation in [sorted(generation) for generation in nx.topological_generations(self.dag)]:
+            for node_name in node_generation:
+                print(f"### Read {node_name} ###")
+                node = self.dag.nodes[node_name]
+                if node['type'] == 'raw': # if the node is a raw data
+                    df = read_csv(node['path'])
+                    node['dataset_id'] = self.run.add_dataset(df)
 
-    #         # Here to can add preprocessing steps
+                elif node['type'] == 'step': # if the node is a data transformation step
+                    input_dataset_ids = []
+                    # iterate the input nodes of the node
+                    for input_node_name in sorted(nx.ancestors(self.dag, node_name)):
+                        input_node = self.dag.nodes[input_node_name]
+                        
+                        # check if the input node is an adjacent node (includes only immediately proceeding nodes)
+                        if node_name in list(self.dag.adj[input_node_name]):
+                            input_dataset_ids.append(input_node['dataset_id'])
+                    node['dataset_id'] = run_data_transformation(self.run, node['trans_type'], input_dataset_ids)
 
-    #         QMessageBox.information(self, "Pipeline Run", f"Pipeline run completed. Run ID: {self.pipeline_run.run_id}")
-
-    #     except Exception as e:
-    #         QMessageBox.critical(self, "Error", f"An error occurred while running 
+                print(f"### Done {node_name} ###")
 
     def show_profile(self):
         pass
@@ -196,7 +144,8 @@ class MainUIWindow(QWidget):
         pass
 
     def save_profile(self):
-        pass
+        create_run(self.run)
+        QMessageBox.information(self, "Save Profile Run", "Saved!!")
 
     def load_profile(self):
         # Load PipelineRun object and run from the database

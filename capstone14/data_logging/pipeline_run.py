@@ -51,6 +51,12 @@ class PipelineRun:
                 return dataset["data_profile"]
         return None
 
+    def get_dataset(self, dataset_id: int) -> pandas.DataFrame | None:
+        for dataset in self.datasets:
+            if dataset["id"] == dataset_id:
+                return dataset["raw"]
+        return None
+
     def search_datasets(self, dataset_to_compare: pandas.DataFrame) -> str | None:
         if not self.datasets:
             return None
@@ -96,6 +102,25 @@ class PipelineRun:
         
         self.processing_steps.append(processing_step)
         #print(processing_step)
+        return processing_step
+
+    def add_processing_step_with_dataset_ids(
+            self, 
+            description: str, 
+            input_dataset_ids: List[str], 
+            output_dataset_id: str) -> ProcessingStep:
+                    
+        # Create the processing step with enhanced metadata
+        processing_step = ProcessingStep(
+            id=str(uuid4()),
+            description=description,
+            input_datasets=input_dataset_ids,
+            output_datasets=[output_dataset_id]
+        )
+        
+        # Update analysis context
+        self._update_analysis_context(processing_step)
+        self.processing_steps.append(processing_step)
         return processing_step
 
     def _update_analysis_context(self, step: ProcessingStep):
