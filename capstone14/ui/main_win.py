@@ -117,7 +117,7 @@ class MainUIWindow(QWidget):
         self.run = None
         self.run = PipelineRun()
 
-        # iterate according the postion of nodes
+        # iterate according to the postion of nodes
         for node_generation in [sorted(generation) for generation in nx.topological_generations(self.dag)]:
             for node_name in node_generation:
                 print(f"### Read {node_name} ###")
@@ -319,8 +319,11 @@ class MainUIWindow(QWidget):
 
 
     def save_profile(self):
-        create_run(self.run)
-        QMessageBox.information(self, "Save Profile Run", "Saved!!")
+        if self.run is not None:
+            create_run(self.run)
+            QMessageBox.information(self, "Save Profile Run", "Saved!!")
+        else:
+            QMessageBox.warning(self, "Warning", "You should 'Run Pipeline' first!")
 
     def load_profile(self):
         # Load PipelineRun object and run from the database
