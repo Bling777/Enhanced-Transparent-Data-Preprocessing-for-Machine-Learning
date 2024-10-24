@@ -144,14 +144,23 @@ class MainUIWindow(QWidget):
             QMessageBox.warning(self, "Warning", "No pipeline has been run yet.")
             return
 
-        # Open the dialog to let user select a node for profiling
+        # Create a dialog to let the user select a node
         dialog = QDialog(self)
         dialog.setWindowTitle("Select Node to Show Profile")
         layout = QVBoxLayout()
 
         # Add a ComboBox to select the node
         combo_box = QComboBox(dialog)
-        combo_box.addItems([node for node in self.dag.nodes if 'dataset_id' in self.dag.nodes[node]])
+        
+        # Only add nodes that have a 'dataset_id' after the pipeline is run
+        nodes_with_data = [node for node in self.dag.nodes if 'dataset_id' in self.dag.nodes[node]]
+        
+        # If no nodes with datasets are available, show a warning
+        if not nodes_with_data:
+            QMessageBox.warning(self, "Warning", "No datasets available to profile.")
+            return
+
+        combo_box.addItems(nodes_with_data)
         layout.addWidget(combo_box)
 
         # Add a button to show the profile
@@ -170,22 +179,32 @@ class MainUIWindow(QWidget):
         dataset_id = node.get('dataset_id')
 
         if dataset_id is not None:
-            df = self.run.get_dataset_by_id(dataset_id)  # Assuming run object has this method
-            
-            # Create a profile using pandas' describe() method
-            profile = df.describe(include='all')
+            try:
+                # Use the correct method from your PipelineRun class to get the dataset
+                df = self.run.get_dataset(dataset_id)
+                
+                if df is None or df.empty:
+                    QMessageBox.warning(self, "Error", "The dataset is empty or could not be retrieved.")
+                    return
+                
+                # Create a profile using pandas' describe() method
+                profile = df.describe(include='all')
 
-            # Display the profile in a new window (or any other way)
-            profile_dialog = QDialog(self)
-            profile_dialog.setWindowTitle(f"Profile for {node_name}")
-            layout = QVBoxLayout()
+                # Display the profile in a new dialog
+                profile_dialog = QDialog(self)
+                profile_dialog.setWindowTitle(f"Profile for {node_name}")
+                layout = QVBoxLayout()
 
-            # Create a label to display profile as text
-            profile_label = QLabel(str(profile.to_string()))
-            layout.addWidget(profile_label)
+                # Create a QLabel to display the profile
+                profile_label = QLabel(profile.to_string())
+                profile_label.setTextInteractionFlags(Qt.TextSelectableByMouse)  # Make text selectable
+                layout.addWidget(profile_label)
 
-            profile_dialog.setLayout(layout)
-            profile_dialog.exec_()
+                profile_dialog.setLayout(layout)
+                profile_dialog.exec_()
+
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"An error occurred while retrieving the dataset: {str(e)}")
         else:
             QMessageBox.warning(self, "Error", f"No dataset found for node {node_name}")
 
