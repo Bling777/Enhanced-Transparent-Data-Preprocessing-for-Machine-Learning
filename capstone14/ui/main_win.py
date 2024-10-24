@@ -213,12 +213,12 @@ class MainUIWindow(QWidget):
            QMessageBox.warning(self, "Warning", "No pipeline has been run yet.")
            return
 
-    # Open a dialog to select two nodes for comparison
+        # Open a dialog to select two nodes for comparison
         dialog = QDialog(self)
         dialog.setWindowTitle("Select Nodes to Compare")
         layout = QVBoxLayout()
 
-    # Add two ComboBoxes to let the user select input and output nodes
+        # Add two ComboBoxes to let the user select input and output nodes
         combo_box_1 = QComboBox(dialog)
         combo_box_1.addItems([node for node in self.dag.nodes if 'dataset_id' in self.dag.nodes[node]])
         layout.addWidget(QLabel("Select First Node (Input)"))
@@ -229,7 +229,7 @@ class MainUIWindow(QWidget):
         layout.addWidget(QLabel("Select Second Node (Output)"))
         layout.addWidget(combo_box_2)
 
-    # Add the compare button
+        # Add the compare button
         btn_compare = QPushButton("Compare Profiles", dialog)
         btn_compare.clicked.connect(lambda: self.display_profile_comparison(combo_box_1.currentText(), combo_box_2.currentText(), dialog))
         layout.addWidget(btn_compare)
@@ -240,7 +240,7 @@ class MainUIWindow(QWidget):
     def display_profile_comparison(self, node_name_1, node_name_2, dialog):
         dialog.accept()  
 
-    # Get datasets from the two selected nodes
+        # Get datasets from the two selected nodes
         node_1 = self.dag.nodes[node_name_1]
         dataset_id_1 = node_1.get('dataset_id')
 
@@ -251,25 +251,25 @@ class MainUIWindow(QWidget):
            df_1 = self.run.get_dataset_by_id(dataset_id_1)
            df_2 = self.run.get_dataset_by_id(dataset_id_2)
 
-        # Generate statistical summaries (profiles)
+           # Generate statistical summaries (profiles)
            profile_1 = df_1.describe(include='all')
            profile_2 = df_2.describe(include='all')
 
-        # Calculate the differences in statistical measures
+           # Calculate the differences in statistical measures
            profile_diff = profile_2 - profile_1
 
-        # Display the comparison results
+           # Display the comparison results
            self.show_comparison_result(profile_1, profile_2, profile_diff, node_name_1, node_name_2)
         else:
             QMessageBox.warning(self, "Error", "One or both datasets are missing.")
 
     def show_comparison_result(self, profile_1, profile_2, profile_diff, node_name_1, node_name_2):
-    # Create a dialog to display the comparison result
+        # Create a dialog to display the comparison result
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Profile Comparison: {node_name_1} vs {node_name_2}")
         layout = QVBoxLayout()
 
-    # Show the profile comparison result
+        # Show the profile comparison result
         comparison_text = f"--- Profile of {node_name_1} ---\n{profile_1.to_string()}\n\n"
         comparison_text += f"--- Profile of {node_name_2} ---\n{profile_2.to_string()}\n\n"
         comparison_text += f"--- Differences ---\n{profile_diff.to_string()}"
