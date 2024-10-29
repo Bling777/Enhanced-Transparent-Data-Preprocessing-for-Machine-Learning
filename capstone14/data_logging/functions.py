@@ -168,7 +168,7 @@ def save_pipeline_run_to_file(run: PipelineRun, path: str):
     datasets = [
         {
             "dataset_id": dataset.get("id", -1),
-            "profile": dataset.get("data_profile", {})
+            # "profile": dataset.get("data_profile", {})
         } 
         for dataset in run.datasets
     ]

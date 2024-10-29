@@ -1,4 +1,3 @@
-
 import sys  
 import os
 import pandas as pd
@@ -10,11 +9,14 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import networkx as nx
 
 from pandas import DataFrame, read_csv
+from csv import DictReader
 
 from capstone14.data_logging.pipeline_run import PipelineRun
 from capstone14.ui.add_process_step import AddProcessStepWin
 from capstone14.ui.data_trans_type import DataTransType, run_data_transformation
 from capstone14.db.db_functions import create_run
+
+from capstone14.data_logging.functions import save_pipeline_run_to_file
 
 
 class MainUIWindow(QWidget):
@@ -90,22 +92,18 @@ class MainUIWindow(QWidget):
                 id = len(self.dag.nodes)  # Assign a unique ID
                 name = f'R{id}. {os.path.basename(file_path)}'
                 file_desc = f'Raw data file {len(self.dag.nodes) + 1}'  # Simple description
+                fieldnames = []
+                with open(file_path, 'r') as infile:
+                    reader = DictReader(infile)
+                    fieldnames = reader.fieldnames
+                # print(fieldnames)
 
-                self.dag.add_node(name, id=id, type='raw', path=file_path, description=file_desc)
+                self.dag.add_node(name, id=id, type='raw', fields=fieldnames, path=file_path, description=file_desc)
                 self.draw_DAG()  # Update DAG display
     
     def add_pstep(self):
-        AddProcessStepWin.list_input_nodes(list(self.dag.nodes))
-
-        if AddProcessStepWin.selected_pstep != None:
-            id = len(self.dag.nodes)  # Assign a unique ID
-            step_name = f'S{id}. {AddProcessStepWin.selected_pstep.value}'
-            self.dag.add_node(step_name, id=id, type='step', trans_type=AddProcessStepWin.selected_pstep)
-
-            for input_nd in AddProcessStepWin.selected_input_nodes:
-                self.dag.add_edge(input_nd, step_name)
-
-            self.draw_DAG()  # Update DAG display
+        AddProcessStepWin.set_dag_and_show(self.dag)
+        self.draw_DAG()  # Update DAG display
 
     def run_pipeline(self):
         if self.dag.number_of_nodes() == 0:
@@ -135,7 +133,12 @@ class MainUIWindow(QWidget):
                         # check if the input node is an adjacent node (includes only immediately proceeding nodes)
                         if node_name in list(self.dag.adj[input_node_name]):
                             input_dataset_ids.append(input_node['dataset_id'])
-                    node['dataset_id'] = run_data_transformation(self.run, node['trans_type'], input_dataset_ids)
+                    out_dataset_id = run_data_transformation(self.run, node['trans_type'], input_dataset_ids,
+                                                                 node['ref_fields_1'], node['ref_fields_2'])
+                    if out_dataset_id is None:
+                        QMessageBox.warning(self, "Warning", f"{node_name} produces no data. Stop running!")
+                        return
+                    node['dataset_id'] = out_dataset_id
 
                 print(f"### Done {node_name} ###")
 
@@ -320,7 +323,8 @@ class MainUIWindow(QWidget):
 
     def save_profile(self):
         if self.run is not None:
-            create_run(self.run)
+            # create_run(self.run)
+            save_pipeline_run_to_file(self.run, ".")
             QMessageBox.information(self, "Save Profile Run", "Saved!!")
         else:
             QMessageBox.warning(self, "Warning", "You should 'Run Pipeline' first!")
