@@ -11,7 +11,7 @@ from capstone14.data_profiling.data_profile import infer_feature_type
 class DataTransType(Enum):
     # value, number of input datasets, run function name, column check function name
     DEDUPLICATE = 'Deduplicate', 1
-    IMPUTE = 'Impute Missing Values'
+    IMPUTE = 'Impute Missing Values', 1
     MERGE = 'Merge', 2
 
     def __new__(cls, *args, **kwds):

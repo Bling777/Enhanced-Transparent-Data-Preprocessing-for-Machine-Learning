@@ -211,7 +211,7 @@ class MainUIWindow(QWidget):
         else:
             QMessageBox.warning(self, "Error", f"No dataset found for node {node_name}")
 
-     def compare_profile(self):
+    def compare_profile(self):
         if self.run is None:
             QMessageBox.warning(self, "Warning", "No pipeline has been run yet.")
             return
