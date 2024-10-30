@@ -209,118 +209,179 @@ class MainUIWindow(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"An error occurred while retrieving the dataset: {str(e)}")
         else:
-            QMessageBox.warning(self, "Error", f"No dataset found for node {node_name}")
+            QMessageBox.warning(self, "Error", f"No dataset found for node {node_name}") 
+   
 
-    def compare_profile(self):
+     def compare_profiles(self): 
         if self.run is None:
             QMessageBox.warning(self, "Warning", "No pipeline has been run yet.")
             return
 
-        # Open a dialog to select two nodes for comparison
+        # Create dialog for node selection
         dialog = QDialog(self)
         dialog.setWindowTitle("Select Nodes to Compare")
         layout = QVBoxLayout()
 
-        # Add input selection (choose the first node)
-        combo_box_1 = QComboBox(dialog)
-        
-        # Only show nodes that are uploaded files (starting with 'R' and have 'csv' in their name)
-        uploaded_files = [node for node in self.dag.nodes if 'dataset_id' in self.dag.nodes[node] and node.startswith('R') and node.endswith('.csv')]
-        combo_box_1.addItems(uploaded_files)
-        
+        # First node selection (input files)
         layout.addWidget(QLabel("Select First Node (Input - Uploaded Files Only)"))
+        combo_box_1 = QComboBox(dialog)
+        # Get all nodes that start with 'R' (raw input files)
+        raw_files = [node for node in self.dag.nodes 
+                     if 'dataset_id' in self.dag.nodes[node] 
+                     and node.startswith('R')]
+        combo_box_1.addItem("")  # Add empty item as default
+        if raw_files:
+            combo_box_1.addItems(raw_files)
         layout.addWidget(combo_box_1)
 
-        # Add output selection (choose the second node, based on input node)
-        combo_box_2 = QComboBox(dialog)
+        # Second node selection (processed files)
         layout.addWidget(QLabel("Select Second Node (Output)"))
-
-        # Update output options based on selected input node
-        combo_box_1.currentIndexChanged.connect(lambda: self.update_output_options(combo_box_1, combo_box_2))
+        combo_box_2 = QComboBox(dialog)
+        combo_box_2.addItems([])  # Initialize empty
         layout.addWidget(combo_box_2)
 
-        # Add the compare button to initiate profile comparison
+        # Update second combo box when first selection changes
+        def update_second_combo():
+            combo_box_2.clear()
+            selected_input = combo_box_1.currentText()
+            if selected_input:
+                # Get all descendant nodes that start with 'S' (processed steps)
+                processed_nodes = []
+                for node in self.dag.nodes:
+                    if (node.startswith('S') and 
+                        'dataset_id' in self.dag.nodes[node] and 
+                        nx.has_path(self.dag, selected_input, node)):
+                        processed_nodes.append(node)
+                combo_box_2.addItems(processed_nodes)
+
+        combo_box_1.currentTextChanged.connect(update_second_combo)
+
+        # Add Compare button
         btn_compare = QPushButton("Compare Profiles", dialog)
-        btn_compare.clicked.connect(lambda: self.display_profile_comparison(combo_box_1.currentText(), combo_box_2.currentText(), dialog))
+        def do_comparison():
+            if not combo_box_1.currentText():
+                QMessageBox.warning(dialog, "Warning", "Please select an input node.")
+                return
+            if not combo_box_2.currentText():
+                QMessageBox.warning(dialog, "Warning", "Please select an output node.")
+                return
+            self.display_profile_comparison(
+                combo_box_1.currentText(), 
+                combo_box_2.currentText(), 
+                dialog
+            )
+        btn_compare.clicked.connect(do_comparison)
         layout.addWidget(btn_compare)
 
-        # Add Cancel button to allow users to close the dialog without comparison
+        # Add Cancel button
         btn_cancel = QPushButton("Cancel", dialog)
-        btn_cancel.clicked.connect(dialog.reject)  # Close the dialog when clicked
+        btn_cancel.clicked.connect(dialog.reject)
         layout.addWidget(btn_cancel)
 
         dialog.setLayout(layout)
         dialog.exec_()
 
-    # Update the output options based on the selected input node.
-    # The output options will only display nodes that are processed from the selected input node.
-    def update_output_options(self, combo_box_1, combo_box_2):
-        selected_input = combo_box_1.currentText()
-        combo_box_2.clear()
+    
+        dialog.accept()  # Close the selection dialog
 
-        # Get the nodes that are processed from the selected input node
-        processed_nodes = [node for node in self.dag.nodes if self.is_processed_from(selected_input, node)]
-        combo_box_2.addItems(processed_nodes)
-
-    # Check if the output node is a result of processing the input node.
-    # This function goes through the DAG edges to check if the output node comes from the input node.
-    def is_processed_from(self, input_node, output_node):
-        # Traverse the DAG edges and check if the output_node is the result of processing input_node
-        for edge in self.dag.edges:
-            if edge[0] == input_node and edge[1] == output_node:
-                return True
-        return False
-
-    # Step 2: Retrieve datasets for the selected nodes and generate profile summaries.
-    def display_profile_comparison(self, node_name_1, node_name_2, dialog):
-        dialog.accept()  # Close the dialog when comparison starts
-
-        # Retrieve the datasets for the selected input and output nodes
+        # Get datasets
         node_1 = self.dag.nodes[node_name_1]
-        dataset_id_1 = node_1.get('dataset_id')
-
         node_2 = self.dag.nodes[node_name_2]
+        
+        dataset_id_1 = node_1.get('dataset_id')
         dataset_id_2 = node_2.get('dataset_id')
 
-        if dataset_id_1 is not None and dataset_id_2 is not None:
-            # Fetch the actual datasets from the pipeline run
-            df_1 = self.run.get_dataset_by_id(dataset_id_1)
-            df_2 = self.run.get_dataset_by_id(dataset_id_2)
+        if dataset_id_1 is None or dataset_id_2 is None:
+            QMessageBox.warning(self, "Error", "One or both datasets are missing.")
+            return
 
-            # Generate statistical summaries (profiles) for both datasets
+        try:
+            # Get the datasets from pipeline run
+            df_1 = self.run.get_dataset(dataset_id_1)
+            df_2 = self.run.get_dataset(dataset_id_2)
+
+            if df_1 is None or df_2 is None:
+                QMessageBox.warning(self, "Error", "Unable to retrieve one or both datasets.")
+                return
+
+            # Generate profiles
             profile_1 = df_1.describe(include='all')
             profile_2 = df_2.describe(include='all')
 
-            # Calculate the differences between the two profiles
-            profile_diff = profile_2 - profile_1
+            # Calculate differences for numeric columns only
+            numeric_cols = df_1.select_dtypes(include=['int64', 'float64']).columns
+            profile_diff = profile_2[numeric_cols] - profile_1[numeric_cols]
 
-            # Display the comparison results in a new dialog
+            # Show comparison results
             self.show_comparison_result(profile_1, profile_2, profile_diff, node_name_1, node_name_2)
-        else:
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred during comparison: {str(e)}")
+
+    def display_profile_comparison(self, node_name_1, node_name_2, dialog):
+        dialog.accept()  # Close the selection dialog
+
+        # Get datasets
+        node_1 = self.dag.nodes[node_name_1]
+        node_2 = self.dag.nodes[node_name_2]
+        
+        dataset_id_1 = node_1.get('dataset_id')
+        dataset_id_2 = node_2.get('dataset_id')
+
+        if dataset_id_1 is None or dataset_id_2 is None:
             QMessageBox.warning(self, "Error", "One or both datasets are missing.")
+            return
 
-    # Step 3: Display the profile comparison results.
-    # This function creates a new dialog to show the profiles of both nodes and the calculated differences.
-    def show_comparison_result(self, profile_1, profile_2, profile_diff, node_name_1, node_name_2):
-        # Create a dialog to display the profile comparison result
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"Profile Comparison: {node_name_1} vs {node_name_2}")
-        layout = QVBoxLayout()
+        try:
+            # Get the datasets from pipeline run
+            df_1 = self.run.get_dataset(dataset_id_1)
+            df_2 = self.run.get_dataset(dataset_id_2)
 
-        # Format the comparison result text, including the profiles and their differences
-        comparison_text = f"--- Profile of {node_name_1} ---\n{profile_1.to_string()}\n\n"
-        comparison_text += f"--- Profile of {node_name_2} ---\n{profile_2.to_string()}\n\n"
-        comparison_text += f"--- Differences ---\n{profile_diff.to_string()}"
+            if df_1 is None or df_2 is None:
+                QMessageBox.warning(self, "Error", "Unable to retrieve one or both datasets.")
+                return
 
-        # Display the formatted text in a label widget
-        label = QLabel(comparison_text)
-        layout.addWidget(label)
+            # Generate profiles
+            profile_1 = df_1.describe(include='all')
+            profile_2 = df_2.describe(include='all')
 
-        dialog.setLayout(layout)
-        dialog.exec_()
+            # Calculate differences for numeric columns only
+            numeric_cols = df_1.select_dtypes(include=['int64', 'float64']).columns
+            profile_diff = profile_2[numeric_cols] - profile_1[numeric_cols]
 
+            # Create a dialog to display the comparison result
+            result_dialog = QDialog(self)
+            result_dialog.setWindowTitle(f"Profile Comparison: {node_name_1} vs {node_name_2}")
+            layout = QVBoxLayout()
 
+            # Create a text display area
+            text_display = QTextEdit()
+            text_display.setReadOnly(True)
 
+            # Format the comparison text
+            comparison_text = f"--- Profile of {node_name_1} ---\n{profile_1.to_string()}\n\n"
+            comparison_text += f"--- Profile of {node_name_2} ---\n{profile_2.to_string()}\n\n"
+            comparison_text += f"--- Differences (Output - Input) ---\n{profile_diff.to_string()}"
+            
+            # Set the formatted text
+            text_display.setText(comparison_text)
+            
+            # Add text display to layout
+            layout.addWidget(text_display)
+
+            # Add close button
+            close_btn = QPushButton("Close", result_dialog)
+            close_btn.clicked.connect(result_dialog.accept)
+            layout.addWidget(close_btn)
+
+            # Set dialog layout and show
+            result_dialog.setLayout(layout)
+            result_dialog.resize(800, 600)  # Set a reasonable initial size
+            result_dialog.exec_()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred during comparison: {str(e)}")
+            
     def save_profile(self):
         if self.run is not None:
             # create_run(self.run)
