@@ -101,6 +101,9 @@ def impute(input_df: DataFrame, missing_val_cols: list) -> DataFrame:
         else:
             col_names_non_numeric.append(col_name)
 
+    # print(col_names_non_numeric)
+    # print(col_names_numeric)
+    
     knn_imputer = KNNImputer(n_neighbors=3, weights="uniform")
     simple_imputer = SimpleImputer(missing_values="Not Given", strategy="most_frequent")
     transformers = ColumnTransformer(
