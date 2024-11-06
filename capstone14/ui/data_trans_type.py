@@ -8,6 +8,8 @@ from capstone14.data_logging.functions import generate_description
 from capstone14.data_profiling.base_types import FeatureType
 from capstone14.data_profiling.data_profile import infer_feature_type
 
+import json
+
 class DataTransType(Enum):
     # value, number of input datasets, run function name, column check function name
     DEDUPLICATE = 'Deduplicate', 1
@@ -93,6 +95,8 @@ def check_columns_deduplicate(input_cols: list) -> list | None:
 
 
 def impute(input_df: DataFrame, missing_val_cols: list) -> DataFrame:
+    print(input_df)
+
     col_names_numeric = []
     col_names_non_numeric = []
     for col_name in missing_val_cols:
@@ -101,6 +105,8 @@ def impute(input_df: DataFrame, missing_val_cols: list) -> DataFrame:
         else:
             col_names_non_numeric.append(col_name)
 
+    # with open("inpute.json", "w") as outfile:
+    #     json.dump(input_df.to_json(), outfile, indent=4)
     # print(col_names_non_numeric)
     # print(col_names_numeric)
     
