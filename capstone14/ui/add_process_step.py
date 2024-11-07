@@ -36,20 +36,20 @@ class AddProcessStepWin(QDialog):
         grid = QGridLayout()
         self.setLayout(grid)
 
+        # possible processing step
+        self.pstepList = QListWidget(self)  
+        for tr in DataTransType:
+            QListWidgetItem(tr.value, self.pstepList)
+        grid.addWidget(QLabel("Processing Task", self), 0, 0)
+        grid.addWidget(self.pstepList, 1, 0)
+
         # raw data and existing steps <- assigned by main_win.py
         self.inputDataList = QListWidget(self) 
         self.inputDataList.setSelectionMode(QAbstractItemView.MultiSelection)
         self.inputDataList.setSortingEnabled(True)
         self.inputDataList.selectionModel().selectionChanged.connect(self.display_columns)
-        grid.addWidget(QLabel("Input Data", self), 0, 0)
-        grid.addWidget(self.inputDataList, 1, 0)
-
-        # possible processing step
-        self.pstepList = QListWidget(self)  
-        for tr in DataTransType:
-            QListWidgetItem(tr.value, self.pstepList)
-        grid.addWidget(QLabel("Processing Task", self), 0, 1)
-        grid.addWidget(self.pstepList, 1, 1)
+        grid.addWidget(QLabel("Input Data", self), 0, 1)
+        grid.addWidget(self.inputDataList, 1, 1)
 
         # column information
         self.columns1_label = QLabel(self)

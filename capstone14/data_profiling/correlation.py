@@ -17,9 +17,13 @@ class PearsonCorrelation(CorrelationStat):
     @property
     def value(self) -> tuple[float, float]:
         if self._value is None:
-            self._columns[0].fillna(0, inplace=True)
-            self._columns[1].fillna(1, inplace=True)
-            result = pearsonr(self._columns[0], self._columns[1])
+            # self._columns[0].fillna(0, inplace=True)
+            # self._columns[1].fillna(1, inplace=True)
+            # result = pearsonr(self._columns[0], self._columns[1])
+            # prevent altering NaN in columns of dataset
+            column_1 = self._columns[0].fillna(0)
+            column_2 = self._columns[1].fillna(1)
+            result = pearsonr(column_1, column_2)
             self._value = result.statistic, result.pvalue
         return self._value
         

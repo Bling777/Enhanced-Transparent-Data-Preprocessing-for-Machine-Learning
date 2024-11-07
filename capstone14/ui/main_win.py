@@ -128,6 +128,7 @@ class MainUIWindow(QWidget):
                 node = self.dag.nodes[node_name]
                 if node['type'] == 'raw': # if the node is a raw data
                     df = read_csv(node['path'])
+                    df.fillna(np.nan, inplace=True) # for KNNImputer
                     node['dataset_id'] = self.run.add_dataset(df)
 
                 elif node['type'] == 'step': # if the node is a data transformation step
