@@ -1,0 +1,28 @@
+{
+    "run_id": "b5ddec62-4ae1-467f-b99e-57dc4b8e6244",
+    "start_time": "2024-11-07T20:42:33.053845",
+    "dataset_ids": [
+        "375792a76e99e89ca49ad9587243ae7011bd4f7411df8663ee71f2b56e84bdeb",
+        "375792a76e99e89ca49ad9587243ae7011bd4f7411df8663ee71f2b56e84bdeb"
+    ],
+    "processing_steps": [
+        {
+            "id": "8e3f55fe-e6ff-4037-a1df-5ad8608160d1",
+            "description": "This function imputes missing values in the specified columns of a DataFrame using KNN imputation for numeric columns and the most frequent strategy for non-numeric columns. It first identifies the numeric and non-numeric columns with missing values and then applies the appropriate imputation method to fill in the missing values.",
+            "input_datasets": [
+                "375792a76e99e89ca49ad9587243ae7011bd4f7411df8663ee71f2b56e84bdeb"
+            ],
+            "output_datasets": [
+                "375792a76e99e89ca49ad9587243ae7011bd4f7411df8663ee71f2b56e84bdeb"
+            ]
+        }
+    ],
+    "data_profiles": [
+        {
+            "dataset_id": "375792a76e99e89ca49ad9587243ae7011bd4f7411df8663ee71f2b56e84bdeb"
+        },
+        {
+            "dataset_id": "375792a76e99e89ca49ad9587243ae7011bd4f7411df8663ee71f2b56e84bdeb"
+        }
+    ]
+}

@@ -1,0 +1,28 @@
+{
+    "run_id": "ad187990-6b52-4602-8329-e3c6e5a1c038",
+    "start_time": "2024-11-07T19:31:55.753821",
+    "dataset_ids": [
+        "375792a76e99e89ca49ad9587243ae7011bd4f7411df8663ee71f2b56e84bdeb",
+        "6c494ecb037398b5d0dbd57c69ae12ed9a4d9250b12c8d244a9312c1fbf4066f"
+    ],
+    "processing_steps": [
+        {
+            "id": "c155b872-b8ef-41c8-8055-ffc238abbe87",
+            "description": "This function is used to standardize the numeric columns in a DataFrame. It takes the input DataFrame and a list of columns to standardize as arguments. If no columns are specified, it standardizes all numeric columns in the DataFrame. The function then uses StandardScaler to standardize the specified columns and returns the transformed DataFrame.",
+            "input_datasets": [
+                "375792a76e99e89ca49ad9587243ae7011bd4f7411df8663ee71f2b56e84bdeb"
+            ],
+            "output_datasets": [
+                "6c494ecb037398b5d0dbd57c69ae12ed9a4d9250b12c8d244a9312c1fbf4066f"
+            ]
+        }
+    ],
+    "data_profiles": [
+        {
+            "dataset_id": "375792a76e99e89ca49ad9587243ae7011bd4f7411df8663ee71f2b56e84bdeb"
+        },
+        {
+            "dataset_id": "6c494ecb037398b5d0dbd57c69ae12ed9a4d9250b12c8d244a9312c1fbf4066f"
+        }
+    ]
+}
