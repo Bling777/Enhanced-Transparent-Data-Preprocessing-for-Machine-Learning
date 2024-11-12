@@ -4,6 +4,7 @@ import pandas as pd
 from PyQt5.QtWidgets import QComboBox, QDialog
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import *
+from PyQt5.QtGui import QFont
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import networkx as nx
@@ -13,6 +14,7 @@ from csv import DictReader
 
 from capstone14.data_logging.pipeline_run import PipelineRun
 from capstone14.ui.add_process_step import AddProcessStepWin
+from capstone14.ui.compare_model_results_dtree import CompareModelResultsDTreeWin
 from capstone14.ui.data_trans_type import DataTransType, run_data_transformation
 from capstone14.db.db_functions import create_run
 
@@ -42,10 +44,11 @@ class MainUIWindow(QWidget):
                    ('Show Profile', self.show_profile), 
                    ('Compare Profiles', self.compare_profiles), 
                    ('Save Pipeline', self.save_profile), 
-                   ('Load Pipeline', self.load_profile))
+                   ('Load Pipeline', self.load_profile),
+                   ('Compare Decision Tree', self.compare_decision_tree))
 
-        grid = QGridLayout()
-        self.setLayout(grid)
+        self.grid = QGridLayout()
+        self.setLayout(self.grid)
 
         # buttons for main functions
         layout = QHBoxLayout()
@@ -56,12 +59,12 @@ class MainUIWindow(QWidget):
             layout.setSpacing(10)
         hGroupBox = QGroupBox()
         hGroupBox.setLayout(layout)
-        grid.addWidget(hGroupBox, 0, 0)
+        self.grid.addWidget(hGroupBox, 0, 0)
 
         # Directed Acyclic Graph
-        figure = plt.figure()
-        self.canvas = FigureCanvas(figure)        
-        grid.addWidget(self.canvas, 1, 0, 9, 9)          
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self.figure)        
+        self.grid.addWidget(self.canvas, 1, 0, 9, 9)          
 
         # set windows size and position (center)
         self.setGeometry(100, 100, 800, 600)
@@ -80,7 +83,12 @@ class MainUIWindow(QWidget):
                 self.dag.nodes[node]["layer"] = layer
         pos = nx.multipartite_layout(self.dag, subset_key="layer")
 
-        plt.clf()
+        # plt.clf()
+        # self.figure.clf()
+        # re-run figure & canvas to draw even after a dialog calls plt.figure()
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self.figure)        
+        self.grid.addWidget(self.canvas, 1, 0, 9, 9)          
         nx.draw(self.dag, pos=pos, with_labels=True, node_shape='s',
                 node_color='lightblue', node_size=1000, font_size=10, font_weight='bold')
         self.canvas.draw_idle()
@@ -109,6 +117,14 @@ class MainUIWindow(QWidget):
     
     def add_pstep(self):
         AddProcessStepWin.set_dag_and_show(self.dag)
+        self.draw_DAG()  # Update DAG display
+
+    def compare_decision_tree(self):
+        if self.run is None:
+            QMessageBox.warning(self, "Warning", "No pipeline has been run yet.")
+            return
+
+        CompareModelResultsDTreeWin.set_run_dag_and_show(self.run, self.dag)
         self.draw_DAG()  # Update DAG display
 
     def run_pipeline(self):

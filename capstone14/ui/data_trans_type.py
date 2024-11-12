@@ -121,7 +121,7 @@ def impute(input_df: DataFrame, missing_val_cols: list) -> DataFrame:
         else:
             col_names_non_numeric.append(col_name)
 
-    print(input_df.dtypes)
+    # print(input_df.dtypes)
     print(col_names_non_numeric)
     print(col_names_numeric)
     
@@ -153,7 +153,7 @@ def standardize(input_df: DataFrame, to_standardize_cols: list) -> DataFrame:
         if infer_feature_type(input_df[col_name]) == FeatureType.NUMERIC:
             col_names_numeric.append(col_name)
 
-    print(input_df.dtypes)
+    # print(input_df.dtypes)
     print(col_names_numeric)
     
     scaler = StandardScaler().set_output(transform="pandas")
@@ -174,7 +174,7 @@ def encode(input_df: DataFrame, to_encode_cols: list) -> DataFrame:
         if infer_feature_type(input_df[col_name]) == FeatureType.CATEGORICAL:
             col_names_category.append(col_name)
 
-    print(input_df.dtypes)
+    # print(input_df.dtypes)
     print(col_names_category)
     
     scaler = OrdinalEncoder().set_output(transform="pandas")

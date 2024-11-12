@@ -1,18 +1,18 @@
 from PyQt5.QtCore import QCoreApplication
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt
 
 from capstone14.ui.data_trans_type import DataTransType, check_columns
 
 
 class AddProcessStepWin(QDialog):
 
-    @staticmethod
-    def list_input_nodes(input_items):
-        win = AddProcessStepWin()
-        for rd in input_items:
-            QListWidgetItem(rd, win.inputDataList)
-        win.exec_()
+    # @staticmethod
+    # def list_input_nodes(input_items):
+    #     win = AddProcessStepWin()
+    #     for rd in input_items:
+    #         QListWidgetItem(rd, win.inputDataList)
+    #     win.exec_()
 
     @staticmethod
     def set_dag_and_show(dag):
@@ -141,8 +141,14 @@ class AddProcessStepWin(QDialog):
         self.close()
 
     def sel_cancel(self):
-        self.dat = None
         self.close()
+
+    def closeEvent(self, event):
+        self.dag = None
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
 
 
 if __name__ == '__main__':
