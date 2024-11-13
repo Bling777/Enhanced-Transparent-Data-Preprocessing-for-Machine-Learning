@@ -39,6 +39,7 @@ class MainUIWindow(QWidget):
         self.run = None
         self.dag = nx.DiGraph()
         self.add_pstep = AddProcessStepWin()
+        self.is_loaded_pipeline = False  # New flag to track if we're working with a loaded pipeline
 
     def initUI(self):
         self.setWindowTitle('Transparent Data Preprocessing System')
@@ -152,14 +153,30 @@ class MainUIWindow(QWidget):
         self.canvas.draw_idle()
 
     def add_raw_data(self):
-        # Clear existing state
-        self.dag.clear()
+        # If we have a loaded pipeline and try to add new data, warn the user
+        if self.is_loaded_pipeline and self.dag.number_of_nodes() > 0:
+            reply = QMessageBox.question(self, 'Warning', 
+                                       'Adding new data will clear the loaded pipeline. Continue?',
+                                       QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                self.dag.clear()
+                self.run = None
+                self.is_loaded_pipeline = False
+            else:
+                return
+
         # Add raw data file into raw_data list
         file_path, _ = QFileDialog.getOpenFileName(self, 'Open Raw File', '', 'CSV Files (*.csv)')
         
         if file_path:  # If a file is selected
-            # check if the file is already included
-            if len([x for x,y in self.dag.nodes(data=True) if y['type']=='raw' and y['path']==file_path]) > 0:
+            # check if the file is already included - safely check for path attribute
+            duplicate_file = False
+            for node, attrs in self.dag.nodes(data=True):
+                if attrs.get('type') == 'raw' and attrs.get('path') == file_path:
+                    duplicate_file = True
+                    break
+
+            if duplicate_file:
                 QMessageBox.warning(self, 'Warning', 'The file is already included')
                 return
             else:
@@ -170,7 +187,6 @@ class MainUIWindow(QWidget):
                 with open(file_path, 'r') as infile:
                     reader = DictReader(infile)
                     fieldnames = reader.fieldnames
-                # print(fieldnames)
 
                 self.dag.add_node(name, id=id, type='raw', fields=fieldnames, path=file_path, description=file_desc)
                 self.draw_DAG()  # Update DAG display
@@ -984,7 +1000,7 @@ class MainUIWindow(QWidget):
             
             # Connect buttons to actions
             btn_cancel.clicked.connect(dialog.reject)
-            btn_load.clicked.connect(lambda: self._load_selected_profile(
+            btn_load.clicked.connect(lambda: self.load_selected_profile(  # Changed from _load_selected_profile to load_selected_profile
                 table.item(table.currentRow(), 0).data(Qt.UserRole) if table.currentRow() >= 0 else None,
                 dialog
             ))
@@ -998,9 +1014,8 @@ class MainUIWindow(QWidget):
             
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load pipeline profiles: {str(e)}")
-    
 
-    def _load_selected_profile(self, run_data: dict, dialog: QDialog):
+    def load_selected_profile(self, run_data: dict, dialog: QDialog):  # Changed from _load_selected_profile to load_selected_profile
         """
         Load the selected pipeline run and reconstruct the DAG.
         """
@@ -1018,6 +1033,7 @@ class MainUIWindow(QWidget):
             self.dag.clear()
             self.run = PipelineRun()
             self.run.run_id = str(run_data['run_id'])
+            self.is_loaded_pipeline = True  # Set the flag when loading a pipeline
             
             # Handle start_time
             if isinstance(run_data['start_time'], datetime):
@@ -1039,7 +1055,8 @@ class MainUIWindow(QWidget):
                     node_name,
                     id=idx,
                     type='raw',
-                    dataset_id=str_dataset_id
+                    dataset_id=str_dataset_id,
+                    is_loaded=True  # Mark this as a loaded node
                 )
                 dataset_to_node[str_dataset_id] = node_name
                 self.run.datasets.append({'id': str_dataset_id})
@@ -1051,20 +1068,17 @@ class MainUIWindow(QWidget):
                 step_type = step.get('transformation_type', 'Unknown')
                 trans_type = DataTransType[step_type] if step_type in DataTransType.__members__ else None
                 
-                # Create node name using the step index
                 node_name = f"S{idx}"
-                
-                # Get description from the step data
                 description = step.get('description', '')
                 
-                # Add node with description
                 self.dag.add_node(
                     node_name,
                     id=idx + len(run_data.get('dataset_ids', [])),
                     type='step',
                     trans_type=trans_type,
                     dataset_id=str(step.get('dataset_id')),
-                    description=description  # Add the description from the step data
+                    description=description,
+                    is_loaded=True  # Mark this as a loaded node
                 )
                 
                 # Add edges from input nodes
