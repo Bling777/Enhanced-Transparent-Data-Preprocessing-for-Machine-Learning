@@ -1,33 +1,34 @@
-import sys  
+# Cleaned libraries
+import sys
 import os
+import json
+import numpy as np
 import pandas as pd
-from PyQt5.QtWidgets import QComboBox, QDialog
+from pandas import DataFrame, read_csv
+from csv import DictReader  
+from datetime import datetime
+import textwrap
+
+# PyQt5 imports
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QFont
+from PyQt5.QtWebEngineWidgets import QWebEngineView
+
+# Matplotlib imports for embedding plots in PyQt
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
+# NetworkX for graph visualization
 import networkx as nx
 
-from pandas import DataFrame, read_csv
-from csv import DictReader
-
+# Capstone-specific imports
 from capstone14.data_logging.pipeline_run import PipelineRun
 from capstone14.ui.add_process_step import AddProcessStepWin
 from capstone14.ui.compare_model_results_dtree import CompareModelResultsDTreeWin
 from capstone14.ui.data_trans_type import DataTransType, run_data_transformation
-from capstone14.db.db_functions import create_run, db
-from capstone14.db.db_functions import get_available_runs  
-
+from capstone14.db.db_functions import create_run, db, get_available_runs
 from capstone14.data_logging.functions import save_pipeline_run_to_file
-
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QPushButton
-from PyQt5.QtGui import QColor
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-import json
-import numpy as np
-from datetime import datetime
-import textwrap
 
 
 class MainUIWindow(QWidget):
