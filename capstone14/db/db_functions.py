@@ -2,6 +2,8 @@ from pymongo import MongoClient
 from capstone14.data_logging.pipeline_run import PipelineRun
 from capstone14.data_profiling.data_profile import DataProfile
 from dataclasses import asdict
+from typing import List
+from datetime import datetime
 
 
 ATLAS_URI = "mongodb+srv://Lee:capstone14@cluster0.tljn8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -31,5 +33,34 @@ def create_run(run: PipelineRun):
             })
         else:
             print("Data profile does already exist")
+
+def get_available_runs():
+    """
+    Get all available pipeline runs from the MongoDB database.
+    Returns a list of run dictionaries.
+    """
+    try:
+        # Get the pipeline_run collection
+        run_collection = db.get_collection("pipeline_run")
+        
+        # Find all documents in the collection
+        runs = run_collection.find({})
+        
+        # Convert cursor to list of dictionaries
+        result = []
+        for run in runs:
+            run_dict = {
+                'run_id': str(run['run_id']),  # Ensure run_id is string
+                'start_time': run['start_time'],
+                'dataset_ids': run['dataset_ids'],
+                'processing_steps': run['processing_steps']
+            }
+            result.append(run_dict)
+            
+        return result
+        
+    except Exception as e:
+        print(f"Database error in get_available_runs: {str(e)}")
+        raise
 
 

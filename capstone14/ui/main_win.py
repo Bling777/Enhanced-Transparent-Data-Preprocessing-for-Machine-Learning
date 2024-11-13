@@ -16,7 +16,8 @@ from capstone14.data_logging.pipeline_run import PipelineRun
 from capstone14.ui.add_process_step import AddProcessStepWin
 from capstone14.ui.compare_model_results_dtree import CompareModelResultsDTreeWin
 from capstone14.ui.data_trans_type import DataTransType, run_data_transformation
-from capstone14.db.db_functions import create_run
+from capstone14.db.db_functions import create_run, db
+from capstone14.db.db_functions import get_available_runs  
 
 from capstone14.data_logging.functions import save_pipeline_run_to_file
 
@@ -25,6 +26,8 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 import json
 import numpy as np
+from datetime import datetime
+import textwrap
 
 
 class MainUIWindow(QWidget):
@@ -72,28 +75,84 @@ class MainUIWindow(QWidget):
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
-
-    def draw_DAG(self):
+    
+    #def draw_DAG(self):
         # print(self.dag.nodes.data())
         # print(self.dag.edges.data())
 
         # set each position of nodes
+    #   for layer, nodes in enumerate(nx.topological_generations(self.dag)):
+    #       for node in nodes:
+    #           self.dag.nodes[node]["layer"] = layer
+    #   pos = nx.multipartite_layout(self.dag, subset_key="layer")
+
+        # plt.clf()
+        # self.figure.clf()
+        # re-run figure & canvas to draw even after a dialog calls plt.figure()
+    #   self.figure = plt.figure()
+    #   self.canvas = FigureCanvas(self.figure)        
+    #   self.grid.addWidget(self.canvas, 1, 0, 9, 9)          
+    #   nx.draw(self.dag, pos=pos, with_labels=True, node_shape='s',
+    #   node_color='lightblue', node_size=1000, font_size=10, font_weight='bold')
+    #   self.canvas.draw_idle()
+    
+    def draw_DAG(self):
+        # Set each position of nodes
         for layer, nodes in enumerate(nx.topological_generations(self.dag)):
             for node in nodes:
                 self.dag.nodes[node]["layer"] = layer
         pos = nx.multipartite_layout(self.dag, subset_key="layer")
 
-        # plt.clf()
-        # self.figure.clf()
-        # re-run figure & canvas to draw even after a dialog calls plt.figure()
-        self.figure = plt.figure()
-        self.canvas = FigureCanvas(self.figure)        
-        self.grid.addWidget(self.canvas, 1, 0, 9, 9)          
-        nx.draw(self.dag, pos=pos, with_labels=True, node_shape='s',
-                node_color='lightblue', node_size=1000, font_size=10, font_weight='bold')
+        plt.clf()
+        
+        # Create node labels with descriptions
+        labels = {}
+        for node in self.dag.nodes():
+            node_data = self.dag.nodes[node]
+            if node_data.get('type') == 'step':
+                # Get the description and transformation type
+                desc = node_data.get('description', '')
+                trans_type = node_data.get('trans_type', 'Unknown')
+                
+                # Create label with step name and description
+                step_name = f"S{node_data['id']}. {trans_type}"
+                if desc:
+                    # Wrap description text to multiple lines
+                    wrapped_desc = textwrap.fill(desc, width=60)
+                    labels[node] = f"{step_name}\n{wrapped_desc}"
+                else:
+                    labels[node] = step_name
+            else:
+                # For raw data nodes, keep original label
+                labels[node] = node
+
+        # Draw nodes with different colors based on type
+        node_colors = []
+        node_sizes = []
+        for node in self.dag.nodes():
+            if self.dag.nodes[node].get('type') == 'raw':
+                node_colors.append('lightblue')
+                node_sizes.append(2000)
+            else:
+                node_colors.append('lightgreen')
+                node_sizes.append(3000)  # Larger size for steps with description
+
+        # Draw the graph
+        nx.draw(self.dag, pos=pos, 
+                labels=labels,
+                node_color=node_colors,
+                node_size=node_sizes,
+                node_shape='s',
+                with_labels=True,
+                font_size=8,
+                font_weight='bold',
+                bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.5'))
+        
         self.canvas.draw_idle()
 
     def add_raw_data(self):
+        # Clear existing state
+        self.dag.clear()
         # Add raw data file into raw_data list
         file_path, _ = QFileDialog.getOpenFileName(self, 'Open Raw File', '', 'CSV Files (*.csv)')
         
@@ -849,10 +908,198 @@ class MainUIWindow(QWidget):
             QMessageBox.warning(self, "Warning", "You should 'Run Pipeline' first!")
 
     def load_profile(self):
-        # Load PipelineRun object and run from the database
-        # Create raw_data and processing_steps from run object
-        self.draw_DAG()
-        pass
+        """
+        Load a pipeline profile from the database and reconstruct the DAG visualization.
+        Shows a dialog with run details and handles errors gracefully.
+        """
+        try:
+            # Get available runs from database
+            available_runs = get_available_runs()
+            
+            if not available_runs:
+                QMessageBox.warning(self, "Warning", "No saved pipeline profiles found in the database.")
+                return
+                
+            # Create and configure the dialog
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Load Pipeline Profile")
+            dialog.setMinimumWidth(500)
+            layout = QVBoxLayout()
+            
+            # Add descriptive label
+            layout.addWidget(QLabel("Select a pipeline run to load:"))
+            
+            # Create table widget for better run visualization
+            table = QTableWidget()
+            table.setColumnCount(4)
+            table.setHorizontalHeaderLabels(["Run ID", "Start Time", "Datasets", "Processing Steps"])
+            table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+            
+            # Convert all start_times to strings for comparison
+            for run in available_runs:
+                if isinstance(run['start_time'], datetime):
+                    run['start_time_str'] = run['start_time'].strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    run['start_time_str'] = str(run['start_time'])
+            
+            # Sort runs by start_time_str
+            sorted_runs = sorted(available_runs, 
+                            key=lambda x: x['start_time_str'],
+                            reverse=True)
+            
+            # Populate table with run data
+            table.setRowCount(len(sorted_runs))
+            for row, run in enumerate(sorted_runs):
+                # Run ID
+                id_item = QTableWidgetItem(str(run['run_id']))
+                table.setItem(row, 0, id_item)
+                
+                # Start Time - use the string version
+                time_item = QTableWidgetItem(run['start_time_str'])
+                table.setItem(row, 1, time_item)
+                
+                # Dataset Count
+                dataset_count = len(run.get('dataset_ids', []))
+                dataset_item = QTableWidgetItem(str(dataset_count))
+                table.setItem(row, 2, dataset_item)
+                
+                # Processing Steps Count
+                step_count = len(run.get('processing_steps', []))
+                step_item = QTableWidgetItem(str(step_count))
+                table.setItem(row, 3, step_item)
+                
+                # Store the full run data in the first column item
+                id_item.setData(Qt.UserRole, run)
+            
+            layout.addWidget(table)
+            
+            # Add load and cancel buttons in a horizontal layout
+            button_layout = QHBoxLayout()
+            btn_load = QPushButton("Load Selected Profile")
+            btn_cancel = QPushButton("Cancel")
+            button_layout.addWidget(btn_load)
+            button_layout.addWidget(btn_cancel)
+            layout.addLayout(button_layout)
+            
+            # Connect buttons to actions
+            btn_cancel.clicked.connect(dialog.reject)
+            btn_load.clicked.connect(lambda: self._load_selected_profile(
+                table.item(table.currentRow(), 0).data(Qt.UserRole) if table.currentRow() >= 0 else None,
+                dialog
+            ))
+            
+            # Select first row by default
+            if table.rowCount() > 0:
+                table.setCurrentCell(0, 0)
+            
+            dialog.setLayout(layout)
+            dialog.exec_()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load pipeline profiles: {str(e)}")
+    
+
+    def _load_selected_profile(self, run_data: dict, dialog: QDialog):
+        """
+        Load the selected pipeline run and reconstruct the DAG.
+        """
+        if not run_data:
+            QMessageBox.warning(self, "Error", "Please select a pipeline run to load.")
+            return
+
+        try:
+            progress = QProgressDialog("Loading pipeline profile...", None, 0, 100, self)
+            progress.setWindowModality(Qt.WindowModal)
+            progress.show()
+            progress.setValue(10)
+            
+            # Clear existing state
+            self.dag.clear()
+            self.run = PipelineRun()
+            self.run.run_id = str(run_data['run_id'])
+            
+            # Handle start_time
+            if isinstance(run_data['start_time'], datetime):
+                self.run.start_time = run_data['start_time']
+            else:
+                try:
+                    self.run.start_time = datetime.strptime(str(run_data['start_time']), "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    self.run.start_time = str(run_data['start_time'])
+            
+            progress.setValue(30)
+            
+            # Process datasets
+            dataset_to_node = {}
+            for idx, dataset_id in enumerate(run_data.get('dataset_ids', [])):
+                str_dataset_id = str(dataset_id)
+                node_name = f"R{idx}. Dataset {str_dataset_id}"
+                self.dag.add_node(
+                    node_name,
+                    id=idx,
+                    type='raw',
+                    dataset_id=str_dataset_id
+                )
+                dataset_to_node[str_dataset_id] = node_name
+                self.run.datasets.append({'id': str_dataset_id})
+            
+            progress.setValue(60)
+                
+            # Process steps
+            for idx, step in enumerate(run_data.get('processing_steps', [])):
+                step_type = step.get('transformation_type', 'Unknown')
+                trans_type = DataTransType[step_type] if step_type in DataTransType.__members__ else None
+                
+                # Create node name using the step index
+                node_name = f"S{idx}"
+                
+                # Get description from the step data
+                description = step.get('description', '')
+                
+                # Add node with description
+                self.dag.add_node(
+                    node_name,
+                    id=idx + len(run_data.get('dataset_ids', [])),
+                    type='step',
+                    trans_type=trans_type,
+                    dataset_id=str(step.get('dataset_id')),
+                    description=description  # Add the description from the step data
+                )
+                
+                # Add edges from input nodes
+                input_dataset_ids = step.get('input_dataset_ids', [])
+                for input_id in input_dataset_ids:
+                    str_input_id = str(input_id)
+                    if str_input_id in dataset_to_node:
+                        self.dag.add_edge(dataset_to_node[str_input_id], node_name)
+
+            progress.setValue(90)
+
+            # Verify graph is still a DAG
+            if not nx.is_directed_acyclic_graph(self.dag):
+                raise ValueError("The loaded pipeline structure is not a valid directed acyclic graph")
+
+            self.draw_DAG()
+            
+            progress.setValue(100)
+            progress.close()
+            dialog.accept()
+
+            QMessageBox.information(
+                self, 
+                "Success", 
+                f"Pipeline profile loaded successfully!\n\n"
+                f"Run ID: {run_data['run_id']}\n"
+                f"Nodes: {self.dag.number_of_nodes()}\n"
+                f"Connections: {self.dag.number_of_edges()}\n"
+                f"Datasets: {len(self.run.datasets)}"
+            )
+
+        except Exception as e:
+            progress.close()
+            QMessageBox.critical(self, "Error", f"Failed to load pipeline profile: {str(e)}")
+            dialog.reject()
+
 
 
 if __name__ == '__main__':
