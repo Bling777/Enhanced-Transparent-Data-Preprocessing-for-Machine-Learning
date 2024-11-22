@@ -34,42 +34,47 @@ class DisplayModelResultsDTreeWin(QDialog):
 
         grid = QGridLayout()
         self.setLayout(grid)
-        
-        clf = DecisionTreeClassifier()
-        for i, nd_name in enumerate(self.node_to_compare):
-            X = self.datasets[i][self.data_cols]
-            y = self.datasets[i][self.target_col]
-            # print(X.head())
-            # print(y.head())
-
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-            # print(X_train.head())
-            # print(X_test.head())
-            # print(y_train.head())
-            # print(y_test.head())
-
-            clf.fit(X_train, y_train)
-
-            y_pred = clf.predict(X_test)
-            accuracy = clf.score(X_test, y_test)
-
-            a_layout = QVBoxLayout()
-            figure = plt.figure()
-            canvas = FigureCanvas(figure)        
-            a_layout.addWidget(QLabel(nd_name, self))
-            a_layout.addWidget(QLabel(f"Accuracy: {accuracy * 100:.2f}%", self))
-            a_layout.addWidget(canvas)
-            a_group_box = QGroupBox()
-            a_group_box.setLayout(a_layout)
-            grid.addWidget(a_group_box, 0, i)
-            # tree.plot_tree(clf, filled=True, feature_names=self.data_cols, class_names=[self.target_col])
-            tree.plot_tree(clf, filled=True, feature_names=self.data_cols)
 
         self.setGeometry(100, 100, 1400, 600)
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
+
+        try:        
+            clf = DecisionTreeClassifier()
+            for i, nd_name in enumerate(self.node_to_compare):
+                X = self.datasets[i][self.data_cols]
+                y = self.datasets[i][self.target_col]
+                # print(X.head())
+                # print(y.head())
+
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+                # print(X_train.head())
+                # print(X_test.head())
+                # print(y_train.head())
+                # print(y_test.head())
+
+                clf.fit(X_train, y_train)
+
+                y_pred = clf.predict(X_test)
+                accuracy = clf.score(X_test, y_test)
+
+                a_layout = QVBoxLayout()
+                figure = plt.figure()
+                canvas = FigureCanvas(figure)        
+                a_layout.addWidget(QLabel(nd_name, self))
+                a_layout.addWidget(QLabel(f"Accuracy: {accuracy * 100:.2f}%", self))
+                a_layout.addWidget(canvas)
+                a_group_box = QGroupBox()
+                a_group_box.setLayout(a_layout)
+                grid.addWidget(a_group_box, 0, i)
+                # tree.plot_tree(clf, filled=True, feature_names=self.data_cols, class_names=[self.target_col])
+                tree.plot_tree(clf, filled=True, feature_names=self.data_cols)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"{str(e)}")
+            self.close()
 
     def closeEvent(self, event):
         self.dag = None

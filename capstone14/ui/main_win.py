@@ -99,14 +99,18 @@ class MainUIWindow(QWidget):
     #   self.canvas.draw_idle()
     
     def draw_DAG(self):
+        # plt.clf()
+        # re-run figure & canvas to draw even after a dialog calls plt.figure()
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self.figure)        
+        self.grid.addWidget(self.canvas, 1, 0, 9, 9)          
+        
         # Set each position of nodes
         for layer, nodes in enumerate(nx.topological_generations(self.dag)):
             for node in nodes:
                 self.dag.nodes[node]["layer"] = layer
         pos = nx.multipartite_layout(self.dag, subset_key="layer")
 
-        plt.clf()
-        
         # Create node labels with descriptions
         labels = {}
         for node in self.dag.nodes():
