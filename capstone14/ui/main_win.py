@@ -311,7 +311,7 @@ class MainUIWindow(QWidget):
             QMessageBox.warning(self, "Error", f"No dataset found for node {node_name}") 
    
 
-    def compare_profiles(self): 
+      def compare_profiles(self): 
         if self.run is None:
             QMessageBox.warning(self, "Warning", "No pipeline has been run yet.")
             return
@@ -326,8 +326,8 @@ class MainUIWindow(QWidget):
         combo_box_1 = QComboBox(dialog)
         # Get all nodes that start with 'R' (raw input files)
         raw_files = [node for node in self.dag.nodes 
-                     if 'dataset_id' in self.dag.nodes[node] 
-                     and node.startswith('R')]
+                    if 'dataset_id' in self.dag.nodes[node] 
+                    and node.startswith('R')]
         combo_box_1.addItem("")  # Add empty item as default
         if raw_files:
             combo_box_1.addItems(raw_files)
@@ -364,11 +364,11 @@ class MainUIWindow(QWidget):
             if not combo_box_2.currentText():
                 QMessageBox.warning(dialog, "Warning", "Please select an output node.")
                 return
-            self.display_profile_comparison(
-                combo_box_1.currentText(), 
-                combo_box_2.currentText(), 
-                dialog
-            )
+            # Store selected nodes before closing dialog
+            node_name_1 = combo_box_1.currentText()
+            node_name_2 = combo_box_2.currentText()
+            dialog.accept()
+            self.display_profile_comparison(node_name_1, node_name_2)
         btn_compare.clicked.connect(do_comparison)
         layout.addWidget(btn_compare)
 
@@ -379,47 +379,8 @@ class MainUIWindow(QWidget):
 
         dialog.setLayout(layout)
         dialog.exec_()
-
-    
-        dialog.accept()  # Close the selection dialog
-
-        # Get datasets
-        node_1 = self.dag.nodes[node_name_1]
-        node_2 = self.dag.nodes[node_name_2]
-        
-        dataset_id_1 = node_1.get('dataset_id')
-        dataset_id_2 = node_2.get('dataset_id')
-
-        if dataset_id_1 is None or dataset_id_2 is None:
-            QMessageBox.warning(self, "Error", "One or both datasets are missing.")
-            return
-
-        try:
-            # Get the datasets from pipeline run
-            df_1 = self.run.get_dataset(dataset_id_1)
-            df_2 = self.run.get_dataset(dataset_id_2)
-
-            if df_1 is None or df_2 is None:
-                QMessageBox.warning(self, "Error", "Unable to retrieve one or both datasets.")
-                return
-
-            # Generate profiles
-            profile_1 = df_1.describe(include='all')
-            profile_2 = df_2.describe(include='all')
-
-            # Calculate differences for numeric columns only
-            numeric_cols = df_1.select_dtypes(include=['int64', 'float64']).columns
-            profile_diff = profile_2[numeric_cols] - profile_1[numeric_cols]
-
-            # Show comparison results
-            self.show_comparison_result(profile_1, profile_2, profile_diff, node_name_1, node_name_2)
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred during comparison: {str(e)}")
-
-    #def display_profile_comparison(self, node_name_1, node_name_2, dialog):
-        dialog.accept()  # Close the selection dialog
-        
+   
+    def display_profile_comparison(self, node_name_1, node_name_2):
         try:
             # Get and validate datasets
             node_1 = self.dag.nodes[node_name_1]
@@ -447,6 +408,10 @@ class MainUIWindow(QWidget):
             # Create main dialog
             result_dialog = QDialog(self)
             result_dialog.setWindowTitle(f"Enhanced Profile Comparison: {node_name_1} vs {node_name_2}")
+            
+          
+            result_dialog.setAttribute(Qt.WA_DeleteOnClose)
+            
             main_layout = QVBoxLayout()
 
             # Create tab widget for different views
@@ -485,7 +450,7 @@ class MainUIWindow(QWidget):
             comparison_tab = QWidget()
             comparison_layout = QVBoxLayout()
             
-            # Add filter controls with only Column and Statistic
+            # Add filter controls
             filter_widget = self._create_filter_widget(profile_diff)
             comparison_layout.addWidget(filter_widget)
             
@@ -507,134 +472,16 @@ class MainUIWindow(QWidget):
             stats_tab = QWidget()
             stats_layout = QVBoxLayout()
             
-            stats_text = self._perform_statistical_analysis(df_1, df_2, numeric_cols)
-            stats_label = QLabel(stats_text)
-            stats_label.setWordWrap(True)
-            stats_layout.addWidget(stats_label)
-            
-            stats_tab.setLayout(stats_layout)
-            tab_widget.addTab(stats_tab, "Statistical Analysis")
-
-            # Add export button
-            export_btn = QPushButton("Export Results")
-            export_btn.clicked.connect(lambda: self._export_results(profile_diff, summary_text, stats_text))
-
-            # Add widgets to main layout
-            main_layout.addWidget(tab_widget)
-            main_layout.addWidget(export_btn)
-
-            # Set dialog layout and properties
-            result_dialog.setLayout(main_layout)
-            result_dialog.setMinimumSize(1000, 600)  # Set minimum size
-            result_dialog.setSizeGripEnabled(True)    # Allow resizing
-            result_dialog.exec_()
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred during comparison: {str(e)}")
-
-    def display_profile_comparison(self, node_name_1, node_name_2, dialog):
-        dialog.accept()  # Close the selection dialog
-        
-        try:
-            # Get and validate datasets
-            node_1 = self.dag.nodes[node_name_1]
-            node_2 = self.dag.nodes[node_name_2]
-            dataset_id_1 = node_1.get('dataset_id')
-            dataset_id_2 = node_2.get('dataset_id')
-
-            if None in (dataset_id_1, dataset_id_2):
-                QMessageBox.warning(self, "Error", "One or both datasets are missing.")
-                return
-
-            df_1 = self.run.get_dataset(dataset_id_1)
-            df_2 = self.run.get_dataset(dataset_id_2)
-
-            if df_1 is None or df_2 is None or df_1.empty or df_2.empty:
-                QMessageBox.warning(self, "Error", "Unable to retrieve one or both datasets.")
-                return
-
-            # Calculate basic statistics
-            numeric_cols = df_1.select_dtypes(include=['int64', 'float64']).columns
-            profile_1 = df_1[numeric_cols].describe()
-            profile_2 = df_2[numeric_cols].describe()
-            profile_diff = profile_2 - profile_1
-
-            # Create main dialog
-            result_dialog = QDialog(self)
-            result_dialog.setWindowTitle(f"Enhanced Profile Comparison: {node_name_1} vs {node_name_2}")
-            main_layout = QVBoxLayout()
-
-            # Create tab widget for different views
-            tab_widget = QTabWidget()
-            
-            # === Tab 1: Summary View ===
-            summary_tab = QWidget()
-            summary_layout = QVBoxLayout()
-            
-            # Add scroll area for summary
-            scroll = QScrollArea()
-            scroll.setWidgetResizable(True)
-            scroll_content = QWidget()
-            scroll_layout = QVBoxLayout()
-            
-            # Add summary statistics
-            summary_text = self._generate_summary_statistics(df_1, df_2, profile_diff)
-            summary_label = QLabel(summary_text)
-            summary_label.setWordWrap(True)
-            scroll_layout.addWidget(summary_label)
-            
-            # Add visualization
-            figure = plt.figure(figsize=(10, 6))
-            canvas = FigureCanvas(figure)
-            self._create_comparison_plots(figure, profile_1, profile_2, numeric_cols)
-            scroll_layout.addWidget(canvas)
-            
-            scroll_content.setLayout(scroll_layout)
-            scroll.setWidget(scroll_content)
-            summary_layout.addWidget(scroll)
-            
-            summary_tab.setLayout(summary_layout)
-            tab_widget.addTab(summary_tab, "Summary")
-
-            # === Tab 2: Detailed Comparison ===
-            comparison_tab = QWidget()
-            comparison_layout = QVBoxLayout()
-            
-            # Add filter controls with only Column and Statistic
-            filter_widget = self._create_filter_widget(profile_diff)
-            comparison_layout.addWidget(filter_widget)
-            
-            # Create table container
-            table_container = QWidget()
-            table_layout = QVBoxLayout()
-            
-            # Create and populate table
-            self.comparison_table = self._create_comparison_table(profile_diff)
-            table_layout.addWidget(self.comparison_table)
-            
-            table_container.setLayout(table_layout)
-            comparison_layout.addWidget(table_container)
-            
-            comparison_tab.setLayout(comparison_layout)
-            tab_widget.addTab(comparison_tab, "Detailed Comparison")
-
-            # === Tab 3: Statistical Analysis ===
-            stats_tab = QWidget()
-            stats_layout = QVBoxLayout()
-            
-            # Create scroll area for statistical analysis
             stats_scroll = QScrollArea()
             stats_scroll.setWidgetResizable(True)
             stats_content = QWidget()
             stats_content_layout = QVBoxLayout()
             
-            # Add statistical analysis text
             stats_text = self._perform_statistical_analysis(df_1, df_2, numeric_cols)
             stats_label = QLabel(stats_text)
             stats_label.setWordWrap(True)
             stats_content_layout.addWidget(stats_label)
             
-            # Set up scroll area
             stats_content.setLayout(stats_content_layout)
             stats_scroll.setWidget(stats_content)
             stats_layout.addWidget(stats_scroll)
@@ -642,23 +489,35 @@ class MainUIWindow(QWidget):
             stats_tab.setLayout(stats_layout)
             tab_widget.addTab(stats_tab, "Statistical Analysis")
 
+            button_container = QWidget()
+            button_layout = QHBoxLayout()
+
             # Add export button
             export_btn = QPushButton("Export Results")
             export_btn.clicked.connect(lambda: self._export_results(profile_diff, summary_text, stats_text))
+            
+            # Add close button
+            close_btn = QPushButton("Close")
+            close_btn.clicked.connect(result_dialog.accept)
+
+            button_layout.addWidget(export_btn)
+            button_layout.addWidget(close_btn)
+            button_container.setLayout(button_layout)
 
             # Add widgets to main layout
             main_layout.addWidget(tab_widget)
-            main_layout.addWidget(export_btn)
+            main_layout.addWidget(button_container)
 
             # Set dialog layout and properties
             result_dialog.setLayout(main_layout)
-            result_dialog.setMinimumSize(1000, 600)  # Set minimum size
-            result_dialog.setSizeGripEnabled(True)    # Allow resizing
+            result_dialog.setMinimumSize(1000, 600)
+            result_dialog.setSizeGripEnabled(True)
+            
             result_dialog.exec_()
         
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred during comparison: {str(e)}")
-
+    
     def _create_filter_widget(self, profile_diff):
         """Create widget for filtering the comparison results"""
         filter_widget = QWidget()
@@ -712,8 +571,6 @@ class MainUIWindow(QWidget):
                 if self.comparison_table.verticalHeaderItem(row).text() != selected_stat:
                     self.comparison_table.hideRow(row)
    
-   # Add these methods to your MainUIWindow class:
-
     def _generate_summary_statistics(self, df_1, df_2, profile_diff):
         """Generate summary statistics text comparing the two datasets"""
         summary = []
@@ -913,7 +770,7 @@ class MainUIWindow(QWidget):
                 QMessageBox.information(self, "Export Successful", "Results have been exported successfully!")
             except Exception as e:
                 QMessageBox.critical(self, "Export Error", f"An error occurred while exporting: {str(e)}")
-    
+
     
             
     def save_profile(self):
